@@ -1,57 +1,48 @@
-import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
-import router from '@/router'
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8080/api';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// Intercepteur pour ajouter le token JWT
-api.interceptors.request.use(
-  (config) => {
-    const authStore = useAuthStore()
-    if (authStore.accessToken) {
-      config.headers.Authorization = `Bearer ${authStore.accessToken}`
-    }
-    return config
+    'Content-Type': 'application/json',
   },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+});
 
-// Intercepteur pour gérer les erreurs de réponse
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config
-    const authStore = useAuthStore()
+// ===============================
+// Intercepteur REQUEST
+// Ajoute le token dans les headers
+// ===============================
+api.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
 
-    // Token expiré - essayer de rafraîchir
-    if (error.response?.status === 401 && !originalRequest._retry && authStore.refreshToken) {
-      originalRequest._retry = true
-
-      try {
-        const response = await axios.post('http://localhost:8080/api/auth/refresh', {
-          refreshToken: authStore.refreshToken
-        })
-
-        authStore.setTokens(response.data.accessToken, response.data.refreshToken)
-        originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`
-        return api(originalRequest)
-      } catch (refreshError) {
-        authStore.logout()
-        router.push({ name: 'login' })
-        return Promise.reject(refreshError)
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
+
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
     }
+);
 
-    return Promise.reject(error)
-  }
-)
+// ===============================
+// Intercepteur RESPONSE
+// Gère les erreurs (401)
+// ===============================
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      }
 
-export default api
+      return Promise.reject(error);
+    }
+);
 
+export default api;

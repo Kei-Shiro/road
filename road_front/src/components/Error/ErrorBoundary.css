@@ -1,0 +1,93 @@
+ /* Error Message Styles */
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px;
+}
+
+.error-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  padding: 48px;
+  max-width: 600px;
+  text-align: center;
+}
+
+.error-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.error-content h2 {
+  font-size: 1.75rem;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+
+.error-content p {
+  font-size: 1rem;
+  color: #64748b;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.error-help {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+}
+
+.error-help h4 {
+  font-size: 1rem;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+
+.error-help ol {
+  margin-left: 20px;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+
+.error-help code {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Courier New', monospace;
+  color: #2563eb;
+  font-size: 0.85rem;
+}
+
