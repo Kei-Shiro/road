@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="road_db@localhost" uuid="f8b10749-7177-46dc-ae8b-98b2e0374b31">
+    <data-source source="LOCAL" name="road_db@localhost" uuid="10bd2905-8078-4f43-b210-fb6eb3de4910">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
+      <imported>true</imported>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://localhost:5432/road_db</jdbc-url>
       <jdbc-additional-properties>

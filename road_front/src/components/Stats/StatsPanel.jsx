@@ -1,5 +1,4 @@
 import { formatBudget, calculateProgress } from '../../utils/helpers';
-import { STATUT_LABELS } from '../../utils/constants';
 import './StatsPanel.css';
 
 const StatsPanel = ({ signalements }) => {

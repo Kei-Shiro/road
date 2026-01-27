@@ -1,8 +1,14 @@
-/* Global Styles */
+/* ============================================
+   TRAVAUX TANA - Styles Professionnels
+   Application de suivi des travaux routiers
+   ============================================ */
+
+/* === Variables CSS === */
 :root {
   --primary-color: #2563eb;
   --primary-dark: #1d4ed8;
   --primary-light: #3b82f6;
+  --secondary-color: #64748b;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
@@ -10,17 +16,31 @@
 
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
+  --bg-dark: #1e293b;
 
   --text-primary: #1e293b;
   --text-secondary: #64748b;
   --text-light: #94a3b8;
 
   --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
 }
 
 .app {
   min-height: 100vh;
-  background: var(--bg-primary);
+  background-color: var(--bg-primary);
 }
 
 .main-content {
@@ -33,7 +53,7 @@
   height: calc(100vh - 64px);
 }
 
-/* Buttons */
+/* === Buttons === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -42,10 +62,10 @@
   padding: 10px 20px;
   font-size: 0.875rem;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
   text-decoration: none;
   font-family: inherit;
 }
@@ -102,7 +122,14 @@
   width: 100%;
 }
 
-/* FAB Button */
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+/* === FAB Button === */
 .fab-button {
   position: absolute;
   bottom: 200px;
@@ -114,18 +141,18 @@
   color: white;
   border: none;
   cursor: pointer;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  box-shadow: var(--shadow-lg);
   z-index: 500;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
   font-size: 1.25rem;
 }
 
 .fab-button:hover {
   transform: scale(1.1);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  box-shadow: var(--shadow-xl);
 }
 
-/* Loading */
+/* === Loading === */
 .loading-container {
   display: flex;
   align-items: center;
@@ -136,9 +163,36 @@
   gap: 12px;
 }
 
-/* Hidden */
+/* === Hidden === */
 .hidden {
   display: none !important;
 }
 
+/* === Animations === */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* === Scrollbar === */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-light);
+}
