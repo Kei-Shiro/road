@@ -63,5 +63,15 @@ public interface SignalementRepository extends JpaRepository<Signalement, Long> 
 
     @Query("SELECT s.statut, COUNT(s) FROM Signalement s WHERE s.isActive = true GROUP BY s.statut")
     List<Object[]> countGroupByStatut();
+
+    // Requêtes pour les statistiques de traitement
+    @Query("SELECT s FROM Signalement s WHERE s.isActive = true AND s.dateNouveau IS NOT NULL AND s.dateEnCours IS NOT NULL")
+    List<Signalement> findWithNouveauToEnCoursDates();
+
+    @Query("SELECT s FROM Signalement s WHERE s.isActive = true AND s.dateEnCours IS NOT NULL AND s.dateTermine IS NOT NULL")
+    List<Signalement> findWithEnCoursToTermineDates();
+
+    @Query("SELECT s FROM Signalement s WHERE s.isActive = true AND s.dateNouveau IS NOT NULL AND s.dateTermine IS NOT NULL")
+    List<Signalement> findWithNouveauToTermineDates();
 }
 

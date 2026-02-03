@@ -72,20 +72,27 @@ public class SignalementService {
     public SignalementResponse createSignalement(SignalementRequest request) {
         User currentUser = getCurrentUser();
 
+        StatutSignalement statut = request.getStatut() != null ? request.getStatut() : StatutSignalement.NOUVEAU;
+        Integer pourcentage = calculerPourcentageParStatut(statut);
+        LocalDateTime now = LocalDateTime.now();
+
         Signalement signalement = Signalement.builder()
                 .titre(request.getTitre())
                 .description(request.getDescription())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .adresse(request.getAdresse())
-                .statut(request.getStatut() != null ? request.getStatut() : StatutSignalement.NOUVEAU)
+                .statut(statut)
                 .surfaceImpactee(request.getSurfaceImpactee())
                 .budget(request.getBudget())
                 .entrepriseResponsable(request.getEntrepriseResponsable())
                 .dateDebut(request.getDateDebut())
                 .dateFinPrevue(request.getDateFinPrevue())
                 .dateFinReelle(request.getDateFinReelle())
-                .pourcentageAvancement(request.getPourcentageAvancement() != null ? request.getPourcentageAvancement() : 0)
+                .pourcentageAvancement(pourcentage)
+                .dateNouveau(statut == StatutSignalement.NOUVEAU ? now : null)
+                .dateEnCours(statut == StatutSignalement.EN_COURS ? now : null)
+                .dateTermine(statut == StatutSignalement.TERMINE ? now : null)
                 .priorite(request.getPriorite())
                 .type(request.getType())
                 .photoUrl(request.getPhotoUrl())
@@ -114,14 +121,18 @@ public class SignalementService {
         if (request.getLatitude() != null) signalement.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) signalement.setLongitude(request.getLongitude());
         if (request.getAdresse() != null) signalement.setAdresse(request.getAdresse());
-        if (request.getStatut() != null) signalement.setStatut(request.getStatut());
+
+        // Gestion du changement de statut avec mise à jour des dates et du pourcentage
+        if (request.getStatut() != null && request.getStatut() != signalement.getStatut()) {
+            updateStatutWithDates(signalement, request.getStatut());
+        }
+
         if (request.getSurfaceImpactee() != null) signalement.setSurfaceImpactee(request.getSurfaceImpactee());
         if (request.getBudget() != null) signalement.setBudget(request.getBudget());
         if (request.getEntrepriseResponsable() != null) signalement.setEntrepriseResponsable(request.getEntrepriseResponsable());
         if (request.getDateDebut() != null) signalement.setDateDebut(request.getDateDebut());
         if (request.getDateFinPrevue() != null) signalement.setDateFinPrevue(request.getDateFinPrevue());
         if (request.getDateFinReelle() != null) signalement.setDateFinReelle(request.getDateFinReelle());
-        if (request.getPourcentageAvancement() != null) signalement.setPourcentageAvancement(request.getPourcentageAvancement());
         if (request.getPriorite() != null) signalement.setPriorite(request.getPriorite());
         if (request.getType() != null) signalement.setType(request.getType());
         if (request.getPhotoUrl() != null) signalement.setPhotoUrl(request.getPhotoUrl());
@@ -130,6 +141,60 @@ public class SignalementService {
         signalement.setUpdatedBy(currentUser);
         signalement = signalementRepository.save(signalement);
         return mapToResponse(signalement);
+    }
+
+    /**
+     * Met à jour le statut avec les dates et le pourcentage d'avancement associés.
+     */
+    private void updateStatutWithDates(Signalement signalement, StatutSignalement nouveauStatut) {
+        LocalDateTime now = LocalDateTime.now();
+
+        signalement.setStatut(nouveauStatut);
+        signalement.setPourcentageAvancement(calculerPourcentageParStatut(nouveauStatut));
+
+        switch (nouveauStatut) {
+            case NOUVEAU:
+                if (signalement.getDateNouveau() == null) {
+                    signalement.setDateNouveau(now);
+                }
+                break;
+            case EN_COURS:
+                if (signalement.getDateNouveau() == null) {
+                    signalement.setDateNouveau(signalement.getCreatedAt());
+                }
+                if (signalement.getDateEnCours() == null) {
+                    signalement.setDateEnCours(now);
+                }
+                break;
+            case TERMINE:
+                if (signalement.getDateNouveau() == null) {
+                    signalement.setDateNouveau(signalement.getCreatedAt());
+                }
+                if (signalement.getDateEnCours() == null) {
+                    signalement.setDateEnCours(now);
+                }
+                signalement.setDateTermine(now);
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Calcule le pourcentage d'avancement basé sur le statut.
+     * NOUVEAU = 0%, EN_COURS = 50%, TERMINE = 100%
+     */
+    private Integer calculerPourcentageParStatut(StatutSignalement statut) {
+        switch (statut) {
+            case NOUVEAU:
+                return 0;
+            case EN_COURS:
+                return 50;
+            case TERMINE:
+                return 100;
+            default:
+                return 0;
+        }
     }
 
     /**
@@ -171,6 +236,9 @@ public class SignalementService {
                         .build())
                 .collect(Collectors.toList());
 
+        // Calcul des statistiques de traitement
+        SignalementStatsResponse.TraitementStats traitement = calculerTraitementStats();
+
         return SignalementStatsResponse.builder()
                 .totalSignalements(total)
                 .nouveaux(nouveaux)
@@ -181,7 +249,74 @@ public class SignalementService {
                 .tauxAvancementMoyen(tauxAvancement)
                 .parStatut(parStatut)
                 .parEntreprise(parEntreprise)
+                .traitement(traitement)
                 .build();
+    }
+
+    /**
+     * Calcule les statistiques de temps de traitement moyen.
+     */
+    private SignalementStatsResponse.TraitementStats calculerTraitementStats() {
+        // Temps moyen de NOUVEAU à EN_COURS
+        List<Signalement> nouveauToEnCours = signalementRepository.findWithNouveauToEnCoursDates();
+        Double tempsNouveauAEnCours = calculerTempsMoyenEnHeures(
+            nouveauToEnCours,
+            Signalement::getDateNouveau,
+            Signalement::getDateEnCours
+        );
+
+        // Temps moyen de EN_COURS à TERMINE
+        List<Signalement> enCoursToTermine = signalementRepository.findWithEnCoursToTermineDates();
+        Double tempsEnCoursATermine = calculerTempsMoyenEnHeures(
+            enCoursToTermine,
+            Signalement::getDateEnCours,
+            Signalement::getDateTermine
+        );
+
+        // Temps moyen total de NOUVEAU à TERMINE
+        List<Signalement> nouveauToTermine = signalementRepository.findWithNouveauToTermineDates();
+        Double tempsTotal = calculerTempsMoyenEnHeures(
+            nouveauToTermine,
+            Signalement::getDateNouveau,
+            Signalement::getDateTermine
+        );
+
+        return SignalementStatsResponse.TraitementStats.builder()
+                .tempsNouveauAEnCours(tempsNouveauAEnCours)
+                .tempsEnCoursATermine(tempsEnCoursATermine)
+                .tempsTotal(tempsTotal)
+                .nombreTravauxTermines((long) nouveauToTermine.size())
+                .nombreTravauxEnCours((long) enCoursToTermine.size())
+                .nombreNouveauxTraitements((long) nouveauToEnCours.size())
+                .build();
+    }
+
+    /**
+     * Calcule le temps moyen en heures entre deux dates.
+     */
+    private Double calculerTempsMoyenEnHeures(
+            List<Signalement> signalements,
+            java.util.function.Function<Signalement, LocalDateTime> getDateDebut,
+            java.util.function.Function<Signalement, LocalDateTime> getDateFin) {
+
+        if (signalements.isEmpty()) {
+            return 0.0;
+        }
+
+        double totalHeures = signalements.stream()
+            .filter(s -> getDateDebut.apply(s) != null && getDateFin.apply(s) != null)
+            .mapToDouble(s -> {
+                LocalDateTime debut = getDateDebut.apply(s);
+                LocalDateTime fin = getDateFin.apply(s);
+                return java.time.Duration.between(debut, fin).toHours();
+            })
+            .sum();
+
+        long count = signalements.stream()
+            .filter(s -> getDateDebut.apply(s) != null && getDateFin.apply(s) != null)
+            .count();
+
+        return count > 0 ? totalHeures / count : 0.0;
     }
 
     /**
@@ -266,14 +401,18 @@ public class SignalementService {
         if (request.getLatitude() != null) signalement.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) signalement.setLongitude(request.getLongitude());
         if (request.getAdresse() != null) signalement.setAdresse(request.getAdresse());
-        if (request.getStatut() != null) signalement.setStatut(request.getStatut());
+
+        // Gestion du changement de statut avec mise à jour des dates et du pourcentage
+        if (request.getStatut() != null && request.getStatut() != signalement.getStatut()) {
+            updateStatutWithDates(signalement, request.getStatut());
+        }
+
         if (request.getSurfaceImpactee() != null) signalement.setSurfaceImpactee(request.getSurfaceImpactee());
         if (request.getBudget() != null) signalement.setBudget(request.getBudget());
         if (request.getEntrepriseResponsable() != null) signalement.setEntrepriseResponsable(request.getEntrepriseResponsable());
         if (request.getDateDebut() != null) signalement.setDateDebut(request.getDateDebut());
         if (request.getDateFinPrevue() != null) signalement.setDateFinPrevue(request.getDateFinPrevue());
         if (request.getDateFinReelle() != null) signalement.setDateFinReelle(request.getDateFinReelle());
-        if (request.getPourcentageAvancement() != null) signalement.setPourcentageAvancement(request.getPourcentageAvancement());
         if (request.getPriorite() != null) signalement.setPriorite(request.getPriorite());
         if (request.getType() != null) signalement.setType(request.getType());
         if (request.getPhotoUrl() != null) signalement.setPhotoUrl(request.getPhotoUrl());
@@ -283,20 +422,27 @@ public class SignalementService {
     }
 
     private Signalement createFromRequest(SignalementRequest request, User user) {
+        StatutSignalement statut = request.getStatut() != null ? request.getStatut() : StatutSignalement.NOUVEAU;
+        Integer pourcentage = calculerPourcentageParStatut(statut);
+        LocalDateTime now = LocalDateTime.now();
+
         return Signalement.builder()
                 .titre(request.getTitre())
                 .description(request.getDescription())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .adresse(request.getAdresse())
-                .statut(request.getStatut() != null ? request.getStatut() : StatutSignalement.NOUVEAU)
+                .statut(statut)
                 .surfaceImpactee(request.getSurfaceImpactee())
                 .budget(request.getBudget())
                 .entrepriseResponsable(request.getEntrepriseResponsable())
                 .dateDebut(request.getDateDebut())
                 .dateFinPrevue(request.getDateFinPrevue())
                 .dateFinReelle(request.getDateFinReelle())
-                .pourcentageAvancement(request.getPourcentageAvancement() != null ? request.getPourcentageAvancement() : 0)
+                .pourcentageAvancement(pourcentage)
+                .dateNouveau(statut == StatutSignalement.NOUVEAU ? now : null)
+                .dateEnCours(statut == StatutSignalement.EN_COURS ? now : null)
+                .dateTermine(statut == StatutSignalement.TERMINE ? now : null)
                 .priorite(request.getPriorite())
                 .type(request.getType())
                 .photoUrl(request.getPhotoUrl())
@@ -337,6 +483,9 @@ public class SignalementService {
                 .dateDebut(signalement.getDateDebut())
                 .dateFinPrevue(signalement.getDateFinPrevue())
                 .dateFinReelle(signalement.getDateFinReelle())
+                .dateNouveau(signalement.getDateNouveau())
+                .dateEnCours(signalement.getDateEnCours())
+                .dateTermine(signalement.getDateTermine())
                 .pourcentageAvancement(signalement.getPourcentageAvancement())
                 .priorite(signalement.getPriorite())
                 .type(signalement.getType())

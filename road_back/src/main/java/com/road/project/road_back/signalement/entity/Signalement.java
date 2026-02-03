@@ -64,6 +64,15 @@ public class Signalement {
     @Column(name = "date_fin_reelle")
     private LocalDate dateFinReelle;
 
+    @Column(name = "date_nouveau")
+    private LocalDateTime dateNouveau; // Date de création (statut NOUVEAU = 0%)
+
+    @Column(name = "date_en_cours")
+    private LocalDateTime dateEnCours; // Date de passage en cours (statut EN_COURS = 50%)
+
+    @Column(name = "date_termine")
+    private LocalDateTime dateTermine; // Date de fin (statut TERMINE = 100%)
+
     @Column(name = "pourcentage_avancement")
     @Builder.Default
     private Integer pourcentageAvancement = 0;

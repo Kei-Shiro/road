@@ -32,6 +32,9 @@ public class SignalementResponse {
     private LocalDate dateDebut;
     private LocalDate dateFinPrevue;
     private LocalDate dateFinReelle;
+    private LocalDateTime dateNouveau;
+    private LocalDateTime dateEnCours;
+    private LocalDateTime dateTermine;
     private Integer pourcentageAvancement;
     private String priorite;
     private String type;
