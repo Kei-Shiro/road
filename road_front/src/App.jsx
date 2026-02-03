@@ -18,6 +18,7 @@ function AppContent() {
   const { user, isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState('carte');
   const [signalements, setSignalements] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -63,8 +64,14 @@ function AppContent() {
     try {
       setLoading(true);
       setError(null);
-      const response = await signalementService.getAll(0, 100);
-      setSignalements(response.content || []);
+      const [signalementsResponse, statsResponse] = await Promise.all([
+        signalementService.getAll(0, 100),
+        signalementService.getStats().catch(() => null)
+      ]);
+      setSignalements(signalementsResponse.content || []);
+      if (statsResponse) {
+        setStats(statsResponse);
+      }
     } catch (error) {
       console.error('Erreur de chargement des signalements:', error);
       if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
@@ -142,6 +149,7 @@ function AppContent() {
         {currentPage === 'admin' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
           <AdminPanel
             signalements={signalements}
+            stats={stats}
             onUpdate={loadSignalements}
             showToast={showToast}
           />

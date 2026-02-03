@@ -28,6 +28,9 @@ public class SignalementStatsResponse {
     private Map<String, Long> parStatut;
     private List<EntrepriseStats> parEntreprise;
 
+    // Statistiques de traitement moyen
+    private TraitementStats traitement;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -35,6 +38,19 @@ public class SignalementStatsResponse {
     public static class EntrepriseStats {
         private String nom;
         private Long count;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TraitementStats {
+        private Double tempsNouveauAEnCours; // Temps moyen en heures pour passer de NOUVEAU à EN_COURS
+        private Double tempsEnCoursATermine; // Temps moyen en heures pour passer de EN_COURS à TERMINE
+        private Double tempsTotal; // Temps moyen total en heures (NOUVEAU à TERMINE)
+        private Long nombreTravauxTermines;
+        private Long nombreTravauxEnCours;
+        private Long nombreNouveauxTraitements;
     }
 }
 

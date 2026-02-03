@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { signalementService } from '../../services/signalementService';
 import { formatDate } from '../../utils/helpers';
 import { STATUT_LABELS } from '../../utils/constants';
+import TraitementStats from '../Stats/TraitementStats';
 import './AdminPanel.css';
 
-const AdminPanel = ({ signalements, onUpdate, showToast }) => {
+const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
   const [activeTab, setActiveTab] = useState('signalements');
   const [users, setUsers] = useState([]);
   const [editingSignalement, setEditingSignalement] = useState(null);
@@ -132,6 +133,12 @@ const AdminPanel = ({ signalements, onUpdate, showToast }) => {
           <i className="fas fa-map-marker-alt"></i> Signalements
         </button>
         <button
+          className={`tab-btn ${activeTab === 'traitement' ? 'active' : ''}`}
+          onClick={() => setActiveTab('traitement')}
+        >
+          <i className="fas fa-chart-line"></i> Statistiques Traitement
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'utilisateurs' ? 'active' : ''}`}
           onClick={() => setActiveTab('utilisateurs')}
         >
@@ -157,6 +164,7 @@ const AdminPanel = ({ signalements, onUpdate, showToast }) => {
                   <th>Adresse</th>
                   <th>Date</th>
                   <th>Statut</th>
+                  <th>Avancement</th>
                   <th>Surface (m²)</th>
                   <th>Budget (Ar)</th>
                   <th>Entreprise</th>
@@ -174,6 +182,11 @@ const AdminPanel = ({ signalements, onUpdate, showToast }) => {
                       <span className={`status-badge ${sig.statut?.toLowerCase()}`}>
                         {STATUT_LABELS[sig.statut] || sig.statut}
                       </span>
+                    </td>
+                    <td>
+                      <div className="progress-cell">
+                        <span className="progress-text">{sig.pourcentageAvancement || 0}%</span>
+                      </div>
                     </td>
                     <td>{sig.surfaceImpactee || '-'}</td>
                     <td>{sig.budget ? Number(sig.budget).toLocaleString() : '-'}</td>
@@ -201,6 +214,13 @@ const AdminPanel = ({ signalements, onUpdate, showToast }) => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Tab Statistiques de Traitement */}
+      {activeTab === 'traitement' && (
+        <div className="tab-content">
+          <TraitementStats stats={stats} signalements={signalements} />
         </div>
       )}
 
@@ -334,11 +354,14 @@ const AdminPanel = ({ signalements, onUpdate, showToast }) => {
                   value={editForm.statut}
                   onChange={(e) => setEditForm({...editForm, statut: e.target.value})}
                 >
-                  <option value="NOUVEAU">Nouveau</option>
-                  <option value="EN_COURS">En cours</option>
-                  <option value="TERMINE">Terminé</option>
+                  <option value="NOUVEAU">Nouveau (0%)</option>
+                  <option value="EN_COURS">En cours (50%)</option>
+                  <option value="TERMINE">Terminé (100%)</option>
                   <option value="ANNULE">Annulé</option>
                 </select>
+                <small className="form-hint">
+                  L'avancement est calculé automatiquement : Nouveau = 0%, En cours = 50%, Terminé = 100%
+                </small>
               </div>
               <div className="form-group">
                 <label>Surface impactée (m²)</label>
