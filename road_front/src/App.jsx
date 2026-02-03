@@ -5,6 +5,7 @@ import MapView from './components/Map/MapView';
 import MapLegend from './components/Map/MapLegend';
 import StatsPanel from './components/Stats/StatsPanel';
 import Dashboard from './components/Dashboard/Dashboard';
+import AdminPanel from './components/Admin/AdminPanel';
 import LoginModal from './components/Auth/LoginModal';
 import RegisterModal from './components/Auth/RegisterModal';
 import SignalementModal from './components/Signalement/SignalementModal';
@@ -25,6 +26,7 @@ function AppContent() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [toasts, setToasts] = useState([]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadSignalements();
   }, []);
@@ -38,8 +40,16 @@ function AppContent() {
         setShowRegisterModal(true);
       } else if (hash === 'dashboard') {
         setCurrentPage('dashboard');
+        setShowLoginModal(false);
+        setShowRegisterModal(false);
+      } else if (hash === 'admin') {
+        setCurrentPage('admin');
+        setShowLoginModal(false);
+        setShowRegisterModal(false);
       } else if (hash === 'carte' || hash === '') {
         setCurrentPage('carte');
+        setShowLoginModal(false);
+        setShowRegisterModal(false);
       }
     };
 
@@ -93,7 +103,7 @@ function AppContent() {
 
   return (
     <div className="app">
-      <Header />
+      <Header currentPage={currentPage} onPageChange={setCurrentPage} />
 
       <main className="main-content">
         {currentPage === 'carte' && (
@@ -111,7 +121,7 @@ function AppContent() {
                 <StatsPanel signalements={signalements} />
                 <MapLegend />
 
-                {isAuthenticated && user?.role !== 'ADMIN' && (
+                {isAuthenticated && user?.role !== 'ADMIN' && user?.role !== 'MANAGER' && (
                   <button
                     className="fab-button"
                     onClick={() => showToast('info', 'Cliquez sur la carte pour signaler un problème')}
@@ -127,6 +137,14 @@ function AppContent() {
 
         {currentPage === 'dashboard' && (
           <Dashboard signalements={signalements} />
+        )}
+
+        {currentPage === 'admin' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+          <AdminPanel
+            signalements={signalements}
+            onUpdate={loadSignalements}
+            showToast={showToast}
+          />
         )}
       </main>
 

@@ -1,12 +1,12 @@
-/* Stats Panel Styles */
+/* === Stats Panel === */
 .stats-panel {
   position: absolute;
   bottom: 24px;
   left: 24px;
-  background: white;
+  background: var(--bg-secondary);
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   z-index: 500;
   min-width: 320px;
 }
@@ -16,8 +16,14 @@
   align-items: center;
   gap: 8px;
   font-size: 1rem;
-  color: #1e293b;
+  font-weight: 600;
+  color: var(--text-primary);
   margin-bottom: 16px;
+}
+
+.stats-panel h3 i {
+  font-size: 1rem;
+  color: var(--primary-color);
 }
 
 .stats-grid {
@@ -35,25 +41,39 @@
   display: block;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #2563eb;
+  color: var(--primary-color);
+  line-height: 1.2;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: #64748b;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 .progress-bar-container {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--bg-primary);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #2563eb);
+  background: linear-gradient(90deg, var(--success-color), var(--primary-color));
   border-radius: 4px;
-  transition: width 350ms ease;
+  transition: width var(--transition-slow);
 }
 
+/* === Responsive Stats Panel === */
+@media (max-width: 1024px) {
+  .stats-panel {
+    left: 16px;
+    right: 16px;
+    min-width: auto;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}

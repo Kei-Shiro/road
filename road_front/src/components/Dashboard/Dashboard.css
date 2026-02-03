@@ -1,9 +1,8 @@
-/* Dashboard Styles */
+/* === Dashboard === */
 .dashboard-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 32px 24px;
-  min-height: calc(100vh - 64px);
 }
 
 .dashboard-container h2 {
@@ -11,8 +10,13 @@
   align-items: center;
   gap: 12px;
   font-size: 1.75rem;
+  font-weight: 700;
   margin-bottom: 32px;
-  color: #1e293b;
+  color: var(--text-primary);
+}
+
+.dashboard-container h2 i {
+  font-size: 1.5rem;
 }
 
 .dashboard-stats {
@@ -23,25 +27,25 @@
 }
 
 .dashboard-card {
-  background: white;
+  background: var(--bg-secondary);
   padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   gap: 20px;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 }
 
 .dashboard-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .card-icon {
   width: 60px;
   height: 60px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,57 +54,65 @@
 
 .card-icon.nouveau {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--danger-color);
 }
 
 .card-icon.en-cours {
   background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  color: var(--warning-color);
 }
 
 .card-icon.termine {
   background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  color: var(--success-color);
 }
 
 .card-icon.budget {
   background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
+  color: var(--primary-color);
 }
 
 .card-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
 .card-value {
+  display: block;
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .card-label {
   font-size: 0.875rem;
-  color: #64748b;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
+/* === Table === */
 .table-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
 .table-header {
   padding: 20px 24px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .table-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0;
-  font-size: 1.25rem;
-  color: #1e293b;
 }
 
 .table-responsive {
@@ -112,28 +124,91 @@
   border-collapse: collapse;
 }
 
-.data-table thead {
-  background: #f8fafc;
+.data-table th,
+.data-table td {
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .data-table th {
-  padding: 12px 24px;
-  text-align: left;
-  font-size: 0.875rem;
+  background: var(--bg-primary);
   font-weight: 600;
-  color: #64748b;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: var(--text-secondary);
 }
 
 .data-table td {
-  padding: 16px 24px;
   font-size: 0.875rem;
-  color: #1e293b;
-  border-top: 1px solid #e2e8f0;
+  color: var(--text-primary);
+}
+
+.data-table tbody tr {
+  transition: background var(--transition-fast);
 }
 
 .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: rgba(37, 99, 235, 0.03);
 }
 
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* === Status Badges === */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.nouveau {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.status-badge.en_cours {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.status-badge.termine {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-badge.annule {
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--secondary-color);
+}
+
+/* === Responsive Dashboard === */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+
+  .dashboard-container h2 {
+    font-size: 1.5rem;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .data-table {
+    font-size: 0.8rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 12px 10px;
+  }
+}

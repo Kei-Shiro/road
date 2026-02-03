@@ -1,19 +1,20 @@
-/* Map Legend Styles */
+/* === Map Legend === */
 .map-legend {
   position: absolute;
   bottom: 24px;
   right: 24px;
-  background: white;
+  background: var(--bg-secondary);
   padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   z-index: 500;
 }
 
 .map-legend h4 {
   font-size: 0.875rem;
+  font-weight: 600;
   margin-bottom: 12px;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .legend-item {
@@ -22,7 +23,8 @@
   gap: 8px;
   margin-bottom: 8px;
   font-size: 0.8rem;
-  color: #64748b;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 .legend-item:last-child {
@@ -33,5 +35,24 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
+.legend-marker.new {
+  background: var(--danger-color);
+}
+
+.legend-marker.in-progress {
+  background: var(--warning-color);
+}
+
+.legend-marker.completed {
+  background: var(--success-color);
+}
+
+/* === Responsive Legend === */
+@media (max-width: 1024px) {
+  .map-legend {
+    display: none;
+  }
+}
