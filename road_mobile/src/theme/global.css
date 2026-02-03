@@ -1,0 +1,479 @@
+/**
+ * Styles globaux personnalisés pour l'application mobile
+ * Complète les variables Ionic avec des styles ergonomiques
+ */
+
+/* =================================
+   Reset et styles de base
+   ================================= */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =================================
+   Boutons larges et tactiles
+   ================================= */
+ion-button {
+  --border-radius: 12px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  min-height: 48px;
+}
+
+ion-button.button-large {
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
+/* =================================
+   FAB (Floating Action Button) stylé
+   ================================= */
+ion-fab-button {
+  --background: linear-gradient(135deg, #3b82f6 0%, #00d9ff 100%);
+  --box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+ion-fab-button:active {
+  transform: scale(0.95);
+  --box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+/* =================================
+   Cards avec effet de profondeur
+   ================================= */
+ion-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+ion-card:active {
+  transform: scale(0.98);
+}
+
+ion-card-header {
+  padding: 16px 16px 8px;
+}
+
+ion-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+ion-card-content {
+  padding: 8px 16px 16px;
+}
+
+/* =================================
+   Items de liste tactiles
+   ================================= */
+ion-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 0;
+  --min-height: 56px;
+  --border-radius: 8px;
+  margin: 4px 0;
+}
+
+ion-item.item-interactive {
+  --background-activated: rgba(59, 130, 246, 0.1);
+  --background-focused: rgba(59, 130, 246, 0.05);
+}
+
+/* =================================
+   Inputs et formulaires
+   ================================= */
+ion-input,
+ion-textarea,
+ion-select {
+  --background: var(--ion-color-step-100, #f0f0f0);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --border-radius: 12px;
+  min-height: 52px;
+  margin: 8px 0;
+}
+
+ion-input.has-focus,
+ion-textarea.has-focus {
+  --background: var(--ion-color-step-50, #f8f8f8);
+  box-shadow: 0 0 0 2px var(--ion-color-primary);
+}
+
+/* =================================
+   Labels flottants
+   ================================= */
+ion-label.label-floating {
+  font-size: 0.9rem;
+  color: var(--ion-color-medium);
+}
+
+/* =================================
+   Segmented buttons (filtres)
+   ================================= */
+ion-segment {
+  --background: var(--ion-color-step-100, #f0f0f0);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+ion-segment-button {
+  --border-radius: 8px;
+  --indicator-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 40px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* =================================
+   Barre d'onglets (Tab Bar)
+   ================================= */
+ion-tab-bar {
+  --border: none;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+ion-tab-button {
+  --color: var(--ion-color-medium);
+  --color-selected: var(--ion-color-primary);
+  --padding-bottom: 8px;
+  --padding-top: 8px;
+}
+
+ion-tab-button ion-icon {
+  font-size: 24px;
+}
+
+ion-tab-button ion-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* =================================
+   Header et toolbar
+   ================================= */
+ion-header ion-toolbar {
+  --min-height: 56px;
+  padding-top: env(safe-area-inset-top);
+}
+
+ion-header ion-title {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+/* =================================
+   Badges de statut
+   ================================= */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.nouveau {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.status-badge.en_cours {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.status-badge.termine {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.status-badge.annule {
+  background-color: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* =================================
+   Badges de priorité
+   ================================= */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.priority-badge.basse {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.priority-badge.moyenne {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.priority-badge.haute {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.priority-badge.urgente {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* =================================
+   Carte Leaflet styles
+   ================================= */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background-color: var(--ion-background-color);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+  font-size: 0.9rem;
+}
+
+/* Marqueur personnalisé */
+.custom-marker {
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 3px solid white;
+}
+
+.custom-marker ion-icon {
+  transform: rotate(45deg);
+  color: white;
+  font-size: 16px;
+}
+
+/* =================================
+   Animations et transitions
+   ================================= */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* =================================
+   Swipe actions (suppression/édition)
+   ================================= */
+ion-item-sliding ion-item-options {
+  border-radius: 0 16px 16px 0;
+}
+
+ion-item-sliding ion-item-options[side="end"] ion-item-option {
+  min-width: 80px;
+}
+
+ion-item-option.danger-option {
+  --background: var(--ion-color-danger);
+  --color: white;
+}
+
+ion-item-option.edit-option {
+  --background: var(--ion-color-warning);
+  --color: white;
+}
+
+/* =================================
+   Skeleton loading
+   ================================= */
+ion-skeleton-text {
+  --background: linear-gradient(90deg, 
+    var(--ion-color-step-100) 0%, 
+    var(--ion-color-step-200) 50%, 
+    var(--ion-color-step-100) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* =================================
+   Empty state
+   ================================= */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-state ion-icon {
+  font-size: 80px;
+  color: var(--ion-color-medium);
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px;
+  color: var(--ion-text-color);
+  font-weight: 600;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--ion-color-medium);
+  font-size: 0.95rem;
+}
+
+/* =================================
+   Pull to refresh
+   ================================= */
+ion-refresher {
+  --color: var(--ion-color-primary);
+}
+
+ion-refresher-content {
+  --color: var(--ion-color-primary);
+}
+
+/* =================================
+   Toast personnalisé
+   ================================= */
+ion-toast {
+  --border-radius: 12px;
+  --box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+ion-toast.toast-success {
+  --background: var(--ion-color-success);
+  --color: white;
+}
+
+ion-toast.toast-error {
+  --background: var(--ion-color-danger);
+  --color: white;
+}
+
+ion-toast.toast-warning {
+  --background: var(--ion-color-warning);
+  --color: black;
+}
+
+/* =================================
+   Accessibilité - focus visible
+   ================================= */
+:focus-visible {
+  outline: 2px solid var(--ion-color-primary);
+  outline-offset: 2px;
+}
+
+/* =================================
+   Mode sombre spécifique
+   ================================= */
+@media (prefers-color-scheme: dark) {
+  .status-badge.nouveau {
+    background-color: rgba(239, 68, 68, 0.25);
+  }
+  
+  .status-badge.en_cours {
+    background-color: rgba(245, 158, 11, 0.25);
+  }
+  
+  .status-badge.termine {
+    background-color: rgba(16, 185, 129, 0.25);
+  }
+  
+  ion-card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .leaflet-popup-content-wrapper {
+    background-color: var(--ion-card-background);
+    color: var(--ion-text-color);
+  }
+
+  .leaflet-popup-tip {
+    background-color: var(--ion-card-background);
+  }
+}

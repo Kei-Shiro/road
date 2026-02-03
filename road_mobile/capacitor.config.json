@@ -1,0 +1,16 @@
+{
+  "appId": "com.road.mobile",
+  "appName": "Road Signalement",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Geolocation": {
+      "permissions": ["location"]
+    },
+    "StatusBar": {
+      "style": "Dark"
+    }
+  }
+}

@@ -1,0 +1,165 @@
+/**
+ * Variables CSS personnalisées pour Ionic
+ * Définit le thème clair et sombre de l'application
+ */
+
+:root {
+  /* =================================
+     Couleurs primaires - Bleu moderne
+     ================================= */
+  --ion-color-primary: #3b82f6;
+  --ion-color-primary-rgb: 59, 130, 246;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #3474d9;
+  --ion-color-primary-tint: #4f8ef7;
+
+  /* =================================
+     Couleurs secondaires - Cyan
+     ================================= */
+  --ion-color-secondary: #00d9ff;
+  --ion-color-secondary-rgb: 0, 217, 255;
+  --ion-color-secondary-contrast: #000000;
+  --ion-color-secondary-contrast-rgb: 0, 0, 0;
+  --ion-color-secondary-shade: #00bfe0;
+  --ion-color-secondary-tint: #1addff;
+
+  /* =================================
+     Couleurs tertiaires - Violet
+     ================================= */
+  --ion-color-tertiary: #8b5cf6;
+  --ion-color-tertiary-rgb: 139, 92, 246;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #7a51d8;
+  --ion-color-tertiary-tint: #976cf7;
+
+  /* =================================
+     Couleurs de succès - Vert
+     ================================= */
+  --ion-color-success: #10b981;
+  --ion-color-success-rgb: 16, 185, 129;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #0ea372;
+  --ion-color-success-tint: #28c08e;
+
+  /* =================================
+     Couleurs d'avertissement - Jaune/Orange
+     ================================= */
+  --ion-color-warning: #f59e0b;
+  --ion-color-warning-rgb: 245, 158, 11;
+  --ion-color-warning-contrast: #000000;
+  --ion-color-warning-contrast-rgb: 0, 0, 0;
+  --ion-color-warning-shade: #d88b0a;
+  --ion-color-warning-tint: #f6a823;
+
+  /* =================================
+     Couleurs de danger - Rouge
+     ================================= */
+  --ion-color-danger: #ef4444;
+  --ion-color-danger-rgb: 239, 68, 68;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #d23c3c;
+  --ion-color-danger-tint: #f15757;
+
+  /* =================================
+     Couleurs neutres
+     ================================= */
+  --ion-color-light: #f4f5f8;
+  --ion-color-light-rgb: 244, 245, 248;
+  --ion-color-light-contrast: #000000;
+  --ion-color-light-contrast-rgb: 0, 0, 0;
+  --ion-color-light-shade: #d7d8da;
+  --ion-color-light-tint: #f5f6f9;
+
+  --ion-color-medium: #92949c;
+  --ion-color-medium-rgb: 146, 148, 156;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #808289;
+  --ion-color-medium-tint: #9d9fa6;
+
+  --ion-color-dark: #222428;
+  --ion-color-dark-rgb: 34, 36, 40;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #1e2023;
+  --ion-color-dark-tint: #383a3e;
+}
+
+/* =================================
+   Thème sombre (automatique selon préférence système)
+   ================================= */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ion-background-color: #1a1a2e;
+    --ion-background-color-rgb: 26, 26, 46;
+
+    --ion-text-color: #ffffff;
+    --ion-text-color-rgb: 255, 255, 255;
+
+    --ion-card-background: #16213e;
+
+    --ion-item-background: #16213e;
+
+    --ion-toolbar-background: #1a1a2e;
+
+    --ion-tab-bar-background: #16213e;
+    --ion-tab-bar-color: #92949c;
+    --ion-tab-bar-color-selected: #00d9ff;
+
+    /* Couleurs pour le mode sombre */
+    --ion-color-step-50: #1e1e2f;
+    --ion-color-step-100: #2a2a3d;
+    --ion-color-step-150: #36364b;
+    --ion-color-step-200: #424259;
+    --ion-color-step-250: #4e4e67;
+    --ion-color-step-300: #5a5a75;
+    --ion-color-step-350: #666683;
+    --ion-color-step-400: #727291;
+    --ion-color-step-450: #7e7e9f;
+    --ion-color-step-500: #8a8aad;
+    --ion-color-step-550: #9696bb;
+    --ion-color-step-600: #a2a2c9;
+    --ion-color-step-650: #aeaed7;
+    --ion-color-step-700: #babae5;
+    --ion-color-step-750: #c6c6f3;
+    --ion-color-step-800: #d2d2ff;
+    --ion-color-step-850: #dedeff;
+    --ion-color-step-900: #eaeaff;
+    --ion-color-step-950: #f6f6ff;
+  }
+
+  ion-content {
+    --background: var(--ion-background-color);
+  }
+
+  ion-card {
+    --background: var(--ion-card-background);
+  }
+
+  ion-item {
+    --background: var(--ion-item-background);
+  }
+}
+
+/* =================================
+   Thème clair (forcé si nécessaire)
+   ================================= */
+.light-theme {
+  --ion-background-color: #f4f5f8;
+  --ion-background-color-rgb: 244, 245, 248;
+
+  --ion-text-color: #222428;
+  --ion-text-color-rgb: 34, 36, 40;
+
+  --ion-card-background: #ffffff;
+  --ion-item-background: #ffffff;
+  --ion-toolbar-background: #ffffff;
+
+  --ion-tab-bar-background: #ffffff;
+  --ion-tab-bar-color: #92949c;
+  --ion-tab-bar-color-selected: #3b82f6;
+}
