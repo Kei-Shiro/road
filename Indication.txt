@@ -1,0 +1,8 @@
+Module Mobile
+    Utilisateurs 
+        Se loguer sur firebase en ligne (inscription via le manager dans l’application web uniquement)
+        Signaler les problèmes routiers à partir du map (utiliser leaflet et openstreetmap en ligne)
+        Localisation 
+        Afficher la carte et recap (cf fonctionnalités visiteurs)
+        Mettre un filtre : afficher mes signalements uniquement
+    
