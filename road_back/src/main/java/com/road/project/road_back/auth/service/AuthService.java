@@ -284,5 +284,71 @@ public class AuthService {
                 .createdAt(user.getCreatedAt())
                 .build();
     }
-}
 
+    /**
+     * Récupère tous les utilisateurs (pour Manager/Admin).
+     */
+    public java.util.List<UserListResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::mapToUserListResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Crée un utilisateur (par Manager/Admin).
+     */
+    @Transactional
+    public UserListResponse createUserByAdmin(CreateUserRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Un compte avec cet email existe déjà");
+        }
+
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .nom(request.getNom())
+                .prenom(request.getPrenom())
+                .telephone(request.getTelephone())
+                .role(request.getRole())
+                .build();
+
+        user = userRepository.save(user);
+        return mapToUserListResponse(user);
+    }
+
+    /**
+     * Récupère un utilisateur par ID.
+     */
+    public UserListResponse getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        return mapToUserListResponse(user);
+    }
+
+    /**
+     * Supprime un utilisateur par ID.
+     */
+    @Transactional
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        userRepository.delete(user);
+    }
+
+    private UserListResponse mapToUserListResponse(User user) {
+        return UserListResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .nom(user.getNom())
+                .prenom(user.getPrenom())
+                .telephone(user.getTelephone())
+                .role(user.getRole())
+                .isLocked(user.getIsLocked())
+                .isOnline(user.getIsOnline())
+                .isActive(user.getIsActive())
+                .loginAttempts(user.getLoginAttempts())
+                .lockedAt(user.getLockedAt())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }

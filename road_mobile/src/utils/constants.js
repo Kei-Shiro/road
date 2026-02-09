@@ -7,6 +7,16 @@
 export const TANA_CENTER = [-18.8792, 47.5079];
 export const TANA_ZOOM = 13;
 
+// Configuration du serveur de tuiles
+export const TILE_SERVER = {
+  // Serveur offline local (Docker tileserver-gl)
+  OFFLINE_URL: 'http://localhost:8081/styles/basic/{z}/{x}/{y}.png',
+  // Serveur en ligne OpenStreetMap (fallback et mobile online)
+  ONLINE_URL: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  // Attribution
+  ATTRIBUTION: '© OpenStreetMap contributors',
+};
+
 // Statuts des signalements
 export const STATUT_SIGNALEMENT = {
   NOUVEAU: 'NOUVEAU',

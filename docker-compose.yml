@@ -13,11 +13,25 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./road_back/src/main/resources/data.sql:/docker-entrypoint-initdb.d/data.sql
+    networks:
+      - road_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Serveur de tuiles offline pour Antananarivo
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: road_tileserver
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./tiles:/data
+    networks:
+      - road_network
+    command: --verbose
 
   backend:
     build:

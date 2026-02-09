@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
 import { formatBudget, formatDate } from '../../utils/helpers';
-import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS } from '../../utils/constants';
+import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, TILE_SERVER } from '../../utils/constants';
 
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
@@ -68,8 +67,8 @@ const MapView = ({ signalements = [], onMapClick }) => {
             className="leaflet-map"
         >
           <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url={TILE_SERVER.ONLINE_URL}
+              attribution={TILE_SERVER.ATTRIBUTION}
           />
 
           <MapClickHandler onMapClick={onMapClick} />
@@ -137,6 +136,21 @@ const MapView = ({ signalements = [], onMapClick }) => {
                             <span className="popup-detail-value">
                         {sig.createdBy.prenom} {sig.createdBy.nom}
                       </span>
+                          </div>
+                      )}
+
+                      {/* Lien vers les photos */}
+                      {sig.photoUrl && (
+                          <div className="popup-detail popup-photos">
+                            <span className="popup-detail-label">Photos</span>
+                            <a
+                              href={sig.photoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="popup-photo-link"
+                            >
+                              <i className="fas fa-camera"></i> Voir les photos
+                            </a>
                           </div>
                       )}
                     </div>

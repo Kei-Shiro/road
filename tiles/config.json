@@ -1,0 +1,21 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data"
+    }
+  },
+  "styles": {
+    "basic": {
+      "style": "basic.json",
+      "tilejson": {
+        "bounds": [47.35, -19.05, 47.70, -18.70]
+      }
+    }
+  },
+  "data": {
+    "antananarivo": {
+      "mbtiles": "antananarivo.mbtiles"
+    }
+  }
+}
+
