@@ -91,3 +91,4 @@ export const authService = {
     const response = await api.post(`/auth/admin/unlock/${userId}`);
     return response.data;
   },
+};
