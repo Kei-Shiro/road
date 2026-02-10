@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -6,6 +7,23 @@ import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, TILE_SERVER } from '../../utils/
 
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
+
+// ===============================
+// Vérifier si le serveur offline est disponible
+// ===============================
+const checkOfflineServer = async () => {
+  try {
+    const response = await fetch(TILE_SERVER.OFFLINE_URL.replace('{z}/{x}/{y}', 'health'), {
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-cache',
+    });
+    return true;
+  } catch (error) {
+    console.warn('Serveur de tuiles offline non disponible, utilisation du serveur en ligne');
+    return false;
+  }
+};
 
 // ===============================
 // Fix icônes Leaflet par défaut
@@ -59,16 +77,50 @@ const MapClickHandler = ({ onMapClick }) => {
 // Composant principal
 // ===============================
 const MapView = ({ signalements = [], onMapClick }) => {
+  const [tileUrl, setTileUrl] = useState(TILE_SERVER.ONLINE_URL);
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Vérifier la disponibilité du serveur offline au démarrage
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        // Essayer de charger une tuile du serveur offline
+        const testUrl = 'http://localhost:8081/health';
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          cache: 'no-cache',
+        });
+        if (response.ok) {
+          setTileUrl(TILE_SERVER.OFFLINE_URL);
+          setIsOffline(true);
+          console.log('✅ Serveur de tuiles offline disponible');
+        }
+      } catch (error) {
+        console.log('ℹ️ Serveur offline non disponible, utilisation OSM en ligne');
+        setTileUrl(TILE_SERVER.ONLINE_URL);
+        setIsOffline(false);
+      }
+    };
+    checkServer();
+  }, []);
+
   return (
       <div className="map-container">
+        {/* Indicateur du mode de carte */}
+        <div className={`map-mode-indicator ${isOffline ? 'offline' : 'online'}`}>
+          <i className={`fas ${isOffline ? 'fa-database' : 'fa-wifi'}`}></i>
+          {isOffline ? 'Carte Offline' : 'Carte Online'}
+        </div>
+
         <MapContainer
             center={TANA_CENTER}
             zoom={TANA_ZOOM}
             className="leaflet-map"
         >
           <TileLayer
-              url={TILE_SERVER.ONLINE_URL}
+              url={tileUrl}
               attribution={TILE_SERVER.ATTRIBUTION}
+              errorTileUrl={TILE_SERVER.ONLINE_URL.replace('{s}', 'a')}
           />
 
           <MapClickHandler onMapClick={onMapClick} />
