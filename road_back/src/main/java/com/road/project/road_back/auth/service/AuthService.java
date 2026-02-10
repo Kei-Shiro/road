@@ -9,6 +9,7 @@ import com.road.project.road_back.auth.repository.UserRepository;
 import com.road.project.road_back.config.JwtTokenProvider;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,12 +21,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
  * Service d'authentification.
+ * Supporte Firebase Firestore quand une connexion Internet est disponible,
+ * avec fallback sur la base de données locale.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -33,6 +38,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final FirebaseUserService firebaseUserService;
 
     @Value("${app.session.max-attempts:3}")
     private int maxAttempts;
@@ -42,18 +48,36 @@ public class AuthService {
 
     /**
      * Inscription d'un nouvel utilisateur.
+     * Tente d'abord d'enregistrer sur Firebase si connexion disponible,
+     * puis enregistre localement.
      */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Vérifier si l'email existe déjà
+        // Vérifier si l'email existe déjà localement
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Un compte avec cet email existe déjà");
         }
 
-        // Créer l'utilisateur
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        // Tenter l'inscription sur Firebase si en ligne
+        // Firebase Auth gère le mot de passe, on ne l'envoie PAS dans Firestore
+        if (firebaseUserService.isOnline()) {
+            log.info("Connexion Internet détectée - Inscription sur Firebase Auth + Firestore");
+            Optional<String> firebaseId = firebaseUserService.createUserInFirebase(request);
+            if (firebaseId.isPresent()) {
+                log.info("Utilisateur créé sur Firebase Auth avec UID: {}", firebaseId.get());
+            } else {
+                log.info("Création Firebase échouée ou email déjà existant sur Firebase");
+            }
+        } else {
+            log.info("Mode hors ligne - Inscription locale uniquement");
+        }
+
+        // Créer l'utilisateur localement (avec mot de passe hashé pour le mode offline)
         User user = User.builder()
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .password(encodedPassword)
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
                 .telephone(request.getTelephone())
@@ -68,9 +92,46 @@ public class AuthService {
 
     /**
      * Connexion d'un utilisateur.
+     *
+     * Architecture Firebase Auth:
+     * - Firebase Admin SDK ne peut PAS vérifier les mots de passe directement
+     * - On vérifie si l'utilisateur existe dans Firebase et on récupère ses données
+     * - L'authentification du mot de passe se fait localement
+     * - Les données utilisateur (nom, rôle, etc.) sont synchronisées depuis Firestore
      */
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
+        // Si en ligne, vérifier si l'utilisateur existe dans Firebase et récupérer ses données
+        if (firebaseUserService.isOnline()) {
+            log.info("Connexion Internet détectée - Vérification utilisateur Firebase");
+            Optional<FirebaseUserService.FirebaseUserData> firebaseUser =
+                    firebaseUserService.getUserByEmail(request.getEmail());
+
+            if (firebaseUser.isPresent()) {
+                log.info("Utilisateur trouvé dans Firebase: {}", request.getEmail());
+                FirebaseUserService.FirebaseUserData fbData = firebaseUser.get();
+
+                // Vérifier si le compte est verrouillé sur Firebase
+                if (Boolean.TRUE.equals(fbData.getIsLocked())) {
+                    throw new LockedException("Votre compte est verrouillé. Veuillez réessayer plus tard ou contacter un administrateur.");
+                }
+
+                // Synchroniser/créer l'utilisateur localement avec les données Firebase
+                syncOrCreateLocalUser(fbData, request.getPassword());
+            }
+        } else {
+            log.info("Mode hors ligne - Authentification locale uniquement");
+        }
+
+        // Authentification locale (vérifie le mot de passe)
+        return authenticateLocally(request, ipAddress, userAgent);
+    }
+
+    /**
+     * Authentification locale.
+     * Vérifie le mot de passe localement et met à jour Firebase si en ligne.
+     */
+    private AuthResponse authenticateLocally(LoginRequest request, String ipAddress, String userAgent) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Email ou mot de passe incorrect"));
 
@@ -94,13 +155,54 @@ public class AuthService {
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
 
+            // Mettre à jour le statut dans Firebase si en ligne
+            firebaseUserService.updateOnlineStatus(user.getEmail(), true);
+
             // Créer la session
             return generateAuthResponseWithSession(user, ipAddress, userAgent);
 
         } catch (BadCredentialsException e) {
             handleFailedLogin(user);
+            // Incrémenter les tentatives dans Firebase si en ligne
+            firebaseUserService.incrementLoginAttempts(user.getEmail());
             throw new BadCredentialsException("Email ou mot de passe incorrect");
         }
+    }
+
+    /**
+     * Synchronise ou crée un utilisateur local depuis les données Firebase.
+     * Les données de Firestore (nom, prénom, rôle, etc.) sont prioritaires.
+     */
+    private void syncOrCreateLocalUser(FirebaseUserService.FirebaseUserData fbData, String rawPassword) {
+        Optional<User> existingUser = userRepository.findByEmail(fbData.getEmail());
+
+        User user;
+        if (existingUser.isPresent()) {
+            // Mettre à jour l'utilisateur existant avec les données Firebase
+            user = existingUser.get();
+            user.setNom(fbData.getNom());
+            user.setPrenom(fbData.getPrenom());
+            user.setTelephone(fbData.getTelephone());
+            user.setRole(fbData.getRole());
+            user.setIsLocked(fbData.getIsLocked() != null ? fbData.getIsLocked() : false);
+            user.setIsActive(fbData.getIsActive() != null ? fbData.getIsActive() : true);
+            log.info("Utilisateur local synchronisé avec Firebase: {}", fbData.getEmail());
+        } else {
+            // Créer un nouvel utilisateur depuis Firebase
+            user = User.builder()
+                    .email(fbData.getEmail())
+                    .password(passwordEncoder.encode(rawPassword))
+                    .nom(fbData.getNom())
+                    .prenom(fbData.getPrenom())
+                    .telephone(fbData.getTelephone())
+                    .role(fbData.getRole())
+                    .isLocked(fbData.getIsLocked() != null ? fbData.getIsLocked() : false)
+                    .isActive(fbData.getIsActive() != null ? fbData.getIsActive() : true)
+                    .build();
+            log.info("Nouvel utilisateur créé localement depuis Firebase: {}", fbData.getEmail());
+        }
+
+        userRepository.save(user);
     }
 
     /**
@@ -131,6 +233,7 @@ public class AuthService {
 
     /**
      * Déconnexion d'un utilisateur.
+     * Met à jour le statut en ligne dans Firebase si connexion disponible.
      */
     @Transactional
     public void logout(String token) {
@@ -140,6 +243,9 @@ public class AuthService {
                     session.getUser().setIsOnline(false);
                     sessionRepository.save(session);
                     userRepository.save(session.getUser());
+
+                    // Mettre à jour le statut dans Firebase si en ligne
+                    firebaseUserService.updateOnlineStatus(session.getUser().getEmail(), false);
                 });
     }
 
@@ -178,6 +284,7 @@ public class AuthService {
 
     /**
      * Met à jour le profil de l'utilisateur.
+     * Met à jour dans Firebase si connexion disponible, puis localement.
      */
     @Transactional
     public AuthResponse.UserDto updateProfile(UpdateProfileRequest request) {
@@ -185,6 +292,20 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
+        // Mettre à jour dans Firebase si en ligne
+        if (firebaseUserService.isOnline()) {
+            log.info("Connexion Internet détectée - Mise à jour Firebase");
+            boolean firebaseUpdated = firebaseUserService.updateUserInFirebase(email, request);
+            if (firebaseUpdated) {
+                log.info("Profil mis à jour dans Firebase pour: {}", email);
+            } else {
+                log.warn("Mise à jour Firebase échouée pour: {}", email);
+            }
+        } else {
+            log.info("Mode hors ligne - Mise à jour locale uniquement");
+        }
+
+        // Mise à jour locale
         if (request.getNom() != null) {
             user.setNom(request.getNom());
         }
@@ -210,11 +331,18 @@ public class AuthService {
 
     /**
      * Déverrouille un compte utilisateur (API publique avec token).
+     * Déverrouille dans Firebase si connexion disponible, puis localement.
      */
     @Transactional
     public void unlockAccount(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        // Déverrouiller dans Firebase si en ligne
+        if (firebaseUserService.isOnline()) {
+            log.info("Déverrouillage du compte dans Firebase: {}", email);
+            firebaseUserService.unlockAccountInFirebase(email);
+        }
 
         user.unlockAccount();
         userRepository.save(user);
@@ -222,11 +350,18 @@ public class AuthService {
 
     /**
      * Déverrouille un compte utilisateur (par Manager).
+     * Déverrouille dans Firebase si connexion disponible, puis localement.
      */
     @Transactional
     public void unlockAccountByManager(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        // Déverrouiller dans Firebase si en ligne
+        if (firebaseUserService.isOnline()) {
+            log.info("Déverrouillage du compte dans Firebase (Manager): {}", user.getEmail());
+            firebaseUserService.unlockAccountInFirebase(user.getEmail());
+        }
 
         user.unlockAccount();
         userRepository.save(user);
