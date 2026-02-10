@@ -20,9 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Contrôleur REST pour les signalements.
- */
 @RestController
 @RequestMapping("/api/signalements")
 @RequiredArgsConstructor
