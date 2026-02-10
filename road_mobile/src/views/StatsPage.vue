@@ -38,6 +38,40 @@
           </ion-card-content>
         </ion-card>
 
+        <!-- Tableau récapitulatif (cahier des charges) -->
+        <ion-card class="summary-card">
+          <ion-card-header>
+            <ion-card-title>
+              <ion-icon :icon="analyticsOutline"></ion-icon>
+              Récapitulatif
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="summary-value">{{ stats.total }}</div>
+                <div class="summary-label">Nb de points</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">{{ formatSurface(stats.totalSurface) }}</div>
+                <div class="summary-label">Surface totale</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">{{ avancementGlobal.toFixed(0) }}%</div>
+                <div class="summary-label">Avancement</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">{{ formatBudgetCompact(stats.totalBudget) }}</div>
+                <div class="summary-label">Budget total</div>
+              </div>
+            </div>
+            <!-- Barre de progression -->
+            <div class="progress-bar-container">
+              <div class="progress-bar" :style="{ width: `${avancementGlobal}%` }"></div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
         <!-- Répartition par statut -->
         <ion-card>
           <ion-card-header>
@@ -251,6 +285,13 @@ const resolutionRate = computed(() => {
   return (stats.value.termine / stats.value.total) * 100;
 });
 
+// Avancement global basé sur: NOUVEAU=0%, EN_COURS=50%, TERMINE=100%
+const avancementGlobal = computed(() => {
+  if (stats.value.total === 0) return 0;
+  const total = stats.value.nouveau * 0 + stats.value.enCours * 50 + stats.value.termine * 100;
+  return total / stats.value.total;
+});
+
 const recentSignalements = computed(() => {
   return [...signalements.value]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -279,13 +320,35 @@ function goToDetail(id) {
 }
 
 function getStatusColor(statut) {
-  const colors = {
-    NOUVEAU: 'danger',
-    EN_COURS: 'warning',
-    TERMINE: 'success',
-    ANNULE: 'medium',
-  };
-  return colors[statut] || 'medium';
+  switch (statut) {
+    case 'NOUVEAU': return 'danger';
+    case 'EN_COURS': return 'warning';
+    case 'TERMINE': return 'success';
+    case 'ANNULE': return 'medium';
+    default: return 'medium';
+  }
+}
+
+function formatSurface(surface) {
+  if (!surface) return '0 m²';
+  if (surface >= 1000) {
+    return `${(surface / 1000).toFixed(1)}k m²`;
+  }
+  return `${surface.toLocaleString()} m²`;
+}
+
+function formatBudgetCompact(budget) {
+  if (!budget) return '0 Ar';
+  if (budget >= 1000000000) {
+    return `${(budget / 1000000000).toFixed(1)} Mrd Ar`;
+  }
+  if (budget >= 1000000) {
+    return `${(budget / 1000000).toFixed(1)} M Ar`;
+  }
+  if (budget >= 1000) {
+    return `${(budget / 1000).toFixed(0)}k Ar`;
+  }
+  return `${budget.toLocaleString()} Ar`;
 }
 </script>
 
@@ -326,6 +389,52 @@ function getStatusColor(statut) {
   font-size: 1rem;
   opacity: 0.9;
   margin-top: 8px;
+}
+
+/* Summary card - Tableau récapitulatif */
+.summary-card {
+  margin: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  text-align: center;
+  padding: 12px;
+  background: var(--ion-color-step-50);
+  border-radius: 12px;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+  margin-top: 4px;
+}
+
+.progress-bar-container {
+  height: 12px;
+  background: var(--ion-color-step-100);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ion-color-success) 0%, var(--ion-color-success-shade) 100%);
+  border-radius: 6px;
+  transition: width 0.5s ease;
 }
 
 /* Status bars */

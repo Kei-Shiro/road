@@ -5,6 +5,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { authService } from '@/services/authService';
+import { useSignalementStore } from '@/stores/signalementStore';
 
 export const useAuthStore = defineStore('auth', () => {
   // État
@@ -49,6 +50,12 @@ export const useAuthStore = defineStore('auth', () => {
           const profile = await authService.getProfile();
           user.value = profile;
           await authService.updateStoredUser(profile);
+
+          // Démarrer le polling des notifications de changement de statut
+          if (profile?.id) {
+            const signalementStore = useSignalementStore();
+            signalementStore.startStatusPolling(profile.id);
+          }
         } catch (profileError) {
           // Token invalide, déconnecter
           console.warn('Token invalide, déconnexion:', profileError);
@@ -77,6 +84,12 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = response.user;
       token.value = response.accessToken;
       
+      // Démarrer le polling des notifications de changement de statut
+      if (response.user?.id) {
+        const signalementStore = useSignalementStore();
+        signalementStore.startStatusPolling(response.user.id);
+      }
+
       return response;
     } catch (err) {
       error.value = err.response?.data?.message || 'Erreur de connexion';
@@ -115,6 +128,10 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true;
     
     try {
+      // Arrêter le polling des notifications
+      const signalementStore = useSignalementStore();
+      signalementStore.stopStatusPolling();
+
       await authService.logout();
     } catch (err) {
       console.warn('Erreur lors de la déconnexion:', err);

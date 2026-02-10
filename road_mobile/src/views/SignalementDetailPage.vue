@@ -153,6 +153,35 @@
             </ion-item>
           </ion-list>
 
+          <!-- Section Photos -->
+          <ion-card v-if="signalement.photoUrl" class="photos-card">
+            <ion-card-header>
+              <ion-card-subtitle>
+                <ion-icon :icon="cameraOutline"></ion-icon>
+                Photos
+              </ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+              <div class="photos-gallery">
+                <img
+                  :src="signalement.photoUrl"
+                  :alt="signalement.titre"
+                  @click="openPhoto(signalement.photoUrl)"
+                  class="photo-thumbnail"
+                />
+              </div>
+              <ion-button
+                fill="clear"
+                expand="block"
+                @click="openPhoto(signalement.photoUrl)"
+                class="view-photo-btn"
+              >
+                <ion-icon :icon="openOutline" slot="start"></ion-icon>
+                Voir en plein écran
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+
           <!-- Actions -->
           <div class="actions" v-if="canEdit || canDelete">
             <ion-button v-if="canEdit" expand="block" @click="goToEdit">
@@ -220,6 +249,7 @@ import {
   businessOutline,
   statsChartOutline,
   buildOutline,
+  cameraOutline,
 } from 'ionicons/icons';
 import L from 'leaflet';
 
@@ -354,6 +384,12 @@ function openInMaps() {
   const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
   window.open(url, '_blank');
 }
+
+function openPhoto(url) {
+  if (url) {
+    window.open(url, '_blank');
+  }
+}
 </script>
 
 <style scoped>
@@ -466,5 +502,40 @@ ion-item ion-label h3 {
   transform: rotate(-45deg);
   border: 3px solid white;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Section Photos */
+.photos-card {
+  margin: 16px 0;
+}
+
+.photos-card ion-card-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.photos-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.photo-thumbnail {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.photo-thumbnail:hover {
+  transform: scale(1.02);
+}
+
+.view-photo-btn {
+  margin-top: 8px;
 }
 </style>

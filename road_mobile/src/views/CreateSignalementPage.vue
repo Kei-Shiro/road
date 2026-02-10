@@ -1,6 +1,6 @@
 <!--
   Page de création d'un nouveau signalement
-  Formulaire complet avec géolocalisation
+  Formulaire complet avec géolocalisation et photos
 -->
 <template>
   <ion-page>
@@ -134,11 +134,51 @@
           </ion-select>
         </ion-item>
 
-        <!-- Aperçu de la carte -->
-        <div v-if="formData.latitude && formData.longitude" class="map-preview">
+        <!-- Section Photos -->
+        <div class="photos-section">
+          <h4>
+            <ion-icon :icon="cameraOutline"></ion-icon>
+            Photos (optionnel)
+          </h4>
+
+          <!-- Boutons d'ajout de photo -->
+          <div class="photo-buttons">
+            <ion-button
+              fill="outline"
+              @click="addPhoto"
+              :disabled="photos.length >= 5"
+            >
+              <ion-icon :icon="cameraOutline" slot="start"></ion-icon>
+              Ajouter une photo
+            </ion-button>
+          </div>
+
+          <!-- Grille de photos -->
+          <div v-if="photos.length > 0" class="photos-grid">
+            <div v-for="(photo, index) in photos" :key="index" class="photo-item">
+              <img :src="photo.dataUrl" :alt="'Photo ' + (index + 1)" />
+              <ion-button
+                fill="clear"
+                color="danger"
+                size="small"
+                class="remove-photo-btn"
+                @click="removePhoto(index)"
+              >
+                <ion-icon :icon="closeCircleOutline" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+
+          <p class="photo-hint" v-if="photos.length < 5">
+            Vous pouvez ajouter jusqu'à 5 photos ({{ 5 - photos.length }} restante(s))
+          </p>
+        </div>
+
+        <!-- Prévisualisation de la carte -->
+        <div class="map-preview" v-if="formData.latitude && formData.longitude">
           <h4>
             <ion-icon :icon="mapOutline"></ion-icon>
-            Aperçu de la localisation
+            Prévisualisation
           </h4>
           <div id="preview-map" ref="previewMapRef"></div>
         </div>
@@ -198,11 +238,14 @@ import {
   mapOutline,
   alertCircleOutline,
   sendOutline,
+  cameraOutline,
+  closeCircleOutline,
 } from 'ionicons/icons';
 import L from 'leaflet';
 
 import { useSignalementStore } from '@/stores/signalementStore';
 import { locationService } from '@/services/locationService';
+import { cameraService } from '@/services/cameraService';
 import { TYPE_TRAVAUX_LABELS, PRIORITE_LABELS, TANA_CENTER } from '@/utils/constants';
 
 // Router
@@ -218,6 +261,7 @@ const previewMap = ref(null);
 const previewMarker = ref(null);
 const gettingLocation = ref(false);
 const error = ref('');
+const photos = ref([]);
 
 // Form data
 const formData = ref({
@@ -324,6 +368,44 @@ function updatePreviewMap() {
   }
 }
 
+// Fonctions pour la gestion des photos
+async function addPhoto() {
+  if (photos.value.length >= 5) {
+    const toast = await toastController.create({
+      message: 'Maximum 5 photos autorisées',
+      duration: 2000,
+      color: 'warning',
+    });
+    await toast.present();
+    return;
+  }
+
+  try {
+    const photo = await cameraService.promptForPhoto();
+    photos.value.push(photo);
+
+    const toast = await toastController.create({
+      message: 'Photo ajoutée',
+      duration: 1500,
+      color: 'success',
+    });
+    await toast.present();
+  } catch (err) {
+    if (err.message !== 'Annulé') {
+      const toast = await toastController.create({
+        message: err.message || 'Erreur lors de la capture',
+        duration: 2000,
+        color: 'danger',
+      });
+      await toast.present();
+    }
+  }
+}
+
+function removePhoto(index) {
+  photos.value.splice(index, 1);
+}
+
 async function handleSubmit() {
   error.value = '';
 
@@ -333,7 +415,7 @@ async function handleSubmit() {
   }
 
   try {
-    await signalementStore.create({
+    const signalementData = {
       titre: formData.value.titre,
       description: formData.value.description,
       adresse: formData.value.adresse,
@@ -341,45 +423,112 @@ async function handleSubmit() {
       longitude: formData.value.longitude,
       type: formData.value.type,
       priorite: formData.value.priorite,
-    });
+    };
+
+    // Créer le signalement
+    const newSignalement = await signalementStore.create(signalementData);
+
+    // Upload des photos si présentes
+    if (photos.value.length > 0 && newSignalement?.id) {
+      try {
+        for (const photo of photos.value) {
+          await signalementStore.uploadPhoto(newSignalement.id, photo);
+        }
+      } catch (photoError) {
+        console.error('Erreur lors de l\'upload des photos:', photoError);
+        // On continue malgré l'erreur des photos
+      }
+    }
 
     const toast = await toastController.create({
       message: 'Signalement créé avec succès !',
-      duration: 3000,
+      duration: 2000,
       color: 'success',
     });
     await toast.present();
 
-    router.replace('/tabs/signalements');
+    router.push('/tabs/map');
   } catch (err) {
-    error.value = err.response?.data?.message || 'Erreur lors de la création';
+    error.value = err.message || 'Erreur lors de la création du signalement';
   }
 }
 </script>
 
 <style scoped>
 .input-item {
-  --background: var(--ion-color-step-50);
+  --background: var(--ion-color-light);
   --border-radius: 12px;
-  --padding-start: 12px;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  overflow: hidden;
+  margin-bottom: 16px;
 }
 
 .coords-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  gap: 12px;
 }
 
 .coord-item {
-  margin-bottom: 8px;
+  flex: 1;
 }
 
 .location-btn {
   margin: 16px 0;
   --border-radius: 12px;
+}
+
+.photos-section {
+  margin: 24px 0;
+  padding: 16px;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+}
+
+.photos-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: var(--ion-color-medium);
+}
+
+.photo-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.photo-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-photo-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  --padding-start: 4px;
+  --padding-end: 4px;
+}
+
+.photo-hint {
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+  margin: 0;
 }
 
 .map-preview {

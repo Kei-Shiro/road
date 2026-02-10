@@ -122,12 +122,52 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Compte déverrouillé avec succès"));
     }
 
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+    @GetMapping("/admin/users")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @Operation(summary = "Récupérer la liste de tous les utilisateurs", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des utilisateurs récupérée"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    public ResponseEntity<java.util.List<UserListResponse>> getAllUsers() {
+        return ResponseEntity.ok(authService.getAllUsers());
     }
-}
+
+    @PostMapping("/admin/users")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @Operation(summary = "Créer un nouvel utilisateur (par Manager/Admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Utilisateur créé"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé"),
+            @ApiResponse(responseCode = "409", description = "Email déjà utilisé")
+    })
+    public ResponseEntity<UserListResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        return ResponseEntity.ok(authService.createUserByAdmin(request));
+    }
+
+    @GetMapping("/admin/users/{userId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @Operation(summary = "Récupérer un utilisateur par ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Utilisateur récupéré"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé"),
+            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé")
+    })
+    public ResponseEntity<UserListResponse> getUserById(@PathVariable Long userId) {
+        return ResponseEntity.ok(authService.getUserById(userId));
+    }
+
+    @DeleteMapping("/admin/users/{userId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @Operation(summary = "Supprimer un utilisateur", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Utilisateur supprimé"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé"),
+            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé")
+    })
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long userId) {
+        authService.deleteUser(userId);
+        return ResponseEntity.ok(Map.of("message", "Utilisateur supprimé avec succès"));
+    }
 

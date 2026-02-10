@@ -5,6 +5,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { signalementService } from '@/services/signalementService';
+import { notificationService } from '@/services/notificationService';
 import { sortSignalements, filterByStatut, filterByUser, calculateStats } from '@/utils/helpers';
 
 export const useSignalementStore = defineStore('signalement', () => {
@@ -30,6 +31,11 @@ export const useSignalementStore = defineStore('signalement', () => {
   
   // Statistiques en cache
   const stats = ref(null);
+
+  // Polling pour les notifications de changement de statut
+  const pollingInterval = ref(null);
+  const lastStatuts = ref(new Map()); // Garde trace des derniers statuts connus
+  const currentUserId = ref(null); // ID de l'utilisateur connecté
 
   // Getters
 
@@ -315,6 +321,89 @@ export const useSignalementStore = defineStore('signalement', () => {
       totalPages: 0,
       hasMore: false,
     };
+    stopStatusPolling();
+    lastStatuts.value.clear();
+  }
+
+  /**
+   * Démarre le polling pour surveiller les changements de statut
+   * @param {number} userId - ID de l'utilisateur connecté
+   * @param {number} intervalMs - Intervalle de polling en ms (défaut: 30s)
+   */
+  function startStatusPolling(userId, intervalMs = 30000) {
+    // Arrêter le polling existant si actif
+    stopStatusPolling();
+
+    currentUserId.value = userId;
+
+    // Initialiser les statuts connus
+    updateLastStatuts();
+
+    // Initialiser les notifications
+    notificationService.initialize();
+
+    // Démarrer le polling
+    pollingInterval.value = setInterval(async () => {
+      await checkStatusChanges();
+    }, intervalMs);
+
+    console.log('Status polling started for user', userId);
+  }
+
+  /**
+   * Arrête le polling des changements de statut
+   */
+  function stopStatusPolling() {
+    if (pollingInterval.value) {
+      clearInterval(pollingInterval.value);
+      pollingInterval.value = null;
+      console.log('Status polling stopped');
+    }
+  }
+
+  /**
+   * Met à jour la map des derniers statuts connus
+   */
+  function updateLastStatuts() {
+    signalements.value.forEach(sig => {
+      lastStatuts.value.set(sig.id, sig.statut);
+    });
+  }
+
+  /**
+   * Vérifie les changements de statut et envoie des notifications
+   */
+  async function checkStatusChanges() {
+    if (!currentUserId.value) return;
+
+    try {
+      // Récupérer les signalements frais
+      const response = await signalementService.getAll(0, pagination.value.size);
+      const freshSignalements = response.content || [];
+
+      // Vérifier les changements pour les signalements de l'utilisateur
+      for (const sig of freshSignalements) {
+        // Vérifier si c'est un signalement de l'utilisateur
+        if (sig.createdBy?.id === currentUserId.value) {
+          const oldStatut = lastStatuts.value.get(sig.id);
+
+          // Si le statut a changé, envoyer une notification
+          if (oldStatut && oldStatut !== sig.statut) {
+            console.log(`Statut changé pour ${sig.titre}: ${oldStatut} -> ${sig.statut}`);
+            await notificationService.notifyStatusChange(sig, oldStatut, sig.statut);
+          }
+        }
+
+        // Mettre à jour le statut connu
+        lastStatuts.value.set(sig.id, sig.statut);
+      }
+
+      // Mettre à jour la liste locale sans déclencher de rechargement
+      signalements.value = freshSignalements;
+
+    } catch (err) {
+      console.error('Erreur lors de la vérification des statuts:', err);
+    }
   }
 
   return {
@@ -353,5 +442,10 @@ export const useSignalementStore = defineStore('signalement', () => {
     setSearchQuery,
     clearError,
     reset,
+
+    // Notifications de changement de statut
+    startStatusPolling,
+    stopStatusPolling,
+    checkStatusChanges,
   };
 });

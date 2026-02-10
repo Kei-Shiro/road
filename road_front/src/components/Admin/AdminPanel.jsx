@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { signalementService } from '../../services/signalementService';
-import { formatDate } from '../../utils/helpers';
+import { authService } from '../../services/authService';
 import { STATUT_LABELS } from '../../utils/constants';
+import { formatDate } from '../../utils/helpers';
 import TraitementStats from '../Stats/TraitementStats';
 import './AdminPanel.css';
 
@@ -9,7 +10,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
   const [activeTab, setActiveTab] = useState('signalements');
   const [users, setUsers] = useState([]);
   const [editingSignalement, setEditingSignalement] = useState(null);
-  const [syncing, setSyncing] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Formulaire de création d'utilisateur
   const [newUserForm, setNewUserForm] = useState({
@@ -17,7 +18,8 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
     prenom: '',
     email: '',
     password: '',
-    role: 'VISITEUR'
+    telephone: '',
+    role: 'UTILISATEUR'
   });
 
   // Formulaire d'édition de signalement
@@ -28,27 +30,23 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
     entrepriseResponsable: ''
   });
 
-  // Mock users pour la démonstration
-  useEffect(() => {
-    setUsers([
-      { id: 1, nom: 'Rakoto', prenom: 'Jean', email: 'jean.rakoto@email.mg', role: 'VISITEUR', status: 'actif', createdAt: '2025-10-15' },
-      { id: 2, nom: 'Andria', prenom: 'Marie', email: 'marie.andria@email.mg', role: 'VISITEUR', status: 'actif', createdAt: '2025-11-02' },
-      { id: 3, nom: 'Rabe', prenom: 'Paul', email: 'paul.rabe@email.mg', role: 'VISITEUR', status: 'bloque', createdAt: '2025-09-20' },
-    ]);
-  }, []);
-
-  const handleSync = async () => {
-    setSyncing(true);
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      if (onUpdate) onUpdate();
-      if (showToast) showToast('success', 'Synchronisation terminée !');
-    } catch {
-      if (showToast) showToast('error', 'Erreur de synchronisation');
+      const usersData = await authService.getAllUsers();
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des utilisateurs:', error);
+      if (showToast) showToast('error', 'Erreur lors du chargement des utilisateurs');
     } finally {
-      setSyncing(false);
+      setLoadingUsers(false);
     }
-  };
+  }, [showToast]);
+
+  // Charger les utilisateurs depuis l'API
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleEditSignalement = (signalement) => {
     setEditingSignalement(signalement);
@@ -71,7 +69,8 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
       setEditingSignalement(null);
       if (onUpdate) onUpdate();
       if (showToast) showToast('success', 'Signalement mis à jour !');
-    } catch {
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
       if (showToast) showToast('error', 'Erreur lors de la mise à jour');
     }
   };
@@ -82,49 +81,57 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         await signalementService.delete(id);
         if (onUpdate) onUpdate();
         if (showToast) showToast('success', 'Signalement supprimé !');
-      } catch {
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
         if (showToast) showToast('error', 'Erreur lors de la suppression');
       }
     }
   };
 
-  const handleBlockUser = (userId) => {
-    setUsers(users.map(u =>
-      u.id === userId ? { ...u, status: u.status === 'bloque' ? 'actif' : 'bloque' } : u
-    ));
+  const handleUnlockUser = async (userId) => {
     const user = users.find(u => u.id === userId);
-    if (showToast) {
-      showToast('success', `Utilisateur ${user.status === 'bloque' ? 'débloqué' : 'bloqué'} !`);
+    if (!user) return;
+
+    if (user.isLocked) {
+      try {
+        await authService.unlockAccountById(userId);
+        await loadUsers();
+        if (showToast) showToast('success', `Utilisateur ${user.prenom} ${user.nom} débloqué !`);
+      } catch (error) {
+        console.error('Erreur lors du déblocage:', error);
+        if (showToast) showToast('error', 'Erreur lors du déblocage de l\'utilisateur');
+      }
+    } else {
+      if (showToast) showToast('info', 'Le blocage manuel n\'est pas disponible. Le blocage se fait automatiquement après 3 tentatives échouées.');
     }
   };
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
-    const newUser = {
-      id: users.length + 1,
-      ...newUserForm,
-      status: 'actif',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setUsers([...users, newUser]);
-    setNewUserForm({ nom: '', prenom: '', email: '', password: '', role: 'VISITEUR' });
-    if (showToast) showToast('success', `Compte créé pour ${newUserForm.prenom} ${newUserForm.nom} !`);
+    try {
+      await authService.createUser({
+        email: newUserForm.email,
+        password: newUserForm.password,
+        nom: newUserForm.nom,
+        prenom: newUserForm.prenom,
+        telephone: newUserForm.telephone || null,
+        role: newUserForm.role
+      });
+      await loadUsers();
+      setNewUserForm({ nom: '', prenom: '', email: '', password: '', telephone: '', role: 'UTILISATEUR' });
+      if (showToast) showToast('success', `Compte créé pour ${newUserForm.prenom} ${newUserForm.nom} !`);
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      const message = error.response?.data?.message || 'Erreur lors de la création du compte';
+      if (showToast) showToast('error', message);
+    }
   };
 
   return (
-    <div className="admin-container">
-      <div className="admin-header">
-        <h2><i className="fas fa-cogs"></i> Panneau d'administration</h2>
-        <button
-          className={`btn btn-primary ${syncing ? 'syncing' : ''}`}
-          onClick={handleSync}
-          disabled={syncing}
-        >
-          <i className={`fas fa-sync-alt ${syncing ? 'fa-spin' : ''}`}></i>
-          {syncing ? ' Synchronisation...' : ' Synchroniser'}
-        </button>
-      </div>
+    <div className="admin-panel">
+      <h2><i className="fas fa-cogs"></i> Panel d'administration</h2>
 
+      {/* Tabs */}
       <div className="admin-tabs">
         <button
           className={`tab-btn ${activeTab === 'signalements' ? 'active' : ''}`}
@@ -136,7 +143,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
           className={`tab-btn ${activeTab === 'traitement' ? 'active' : ''}`}
           onClick={() => setActiveTab('traitement')}
         >
-          <i className="fas fa-chart-line"></i> Statistiques Traitement
+          <i className="fas fa-chart-line"></i> Statistiques
         </button>
         <button
           className={`tab-btn ${activeTab === 'utilisateurs' ? 'active' : ''}`}
@@ -229,47 +236,53 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         <div className="tab-content">
           <div className="table-container">
             <h3>Gestion des utilisateurs</h3>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Date inscription</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>#{user.id}</td>
-                    <td>{user.prenom} {user.nom}</td>
-                    <td>{user.email}</td>
-                    <td>{user.role}</td>
-                    <td>{formatDate(user.createdAt)}</td>
-                    <td>
-                      <span className={`status-badge ${user.status}`}>
-                        {user.status === 'actif' ? 'Actif' : 'Bloqué'}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className={`btn btn-sm ${user.status === 'bloque' ? 'btn-success' : 'btn-warning'}`}
-                        onClick={() => handleBlockUser(user.id)}
-                      >
-                        {user.status === 'bloque' ? (
-                          <><i className="fas fa-unlock"></i> Débloquer</>
-                        ) : (
-                          <><i className="fas fa-ban"></i> Bloquer</>
-                        )}
-                      </button>
-                    </td>
+            {loadingUsers ? (
+              <div className="loading-spinner">
+                <i className="fas fa-spinner fa-spin"></i> Chargement...
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Date inscription</th>
+                    <th>Tentatives</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id}>
+                      <td>#{user.id}</td>
+                      <td>{user.prenom} {user.nom}</td>
+                      <td>{user.email}</td>
+                      <td>{user.role}</td>
+                      <td>{formatDate(user.createdAt)}</td>
+                      <td>{user.loginAttempts || 0}</td>
+                      <td>
+                        <span className={`status-badge ${user.isLocked ? 'bloque' : 'actif'}`}>
+                          {user.isLocked ? 'Bloqué' : 'Actif'}
+                        </span>
+                      </td>
+                      <td>
+                        {user.isLocked && (
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleUnlockUser(user.id)}
+                          >
+                            <i className="fas fa-unlock"></i> Débloquer
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -315,7 +328,18 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                   type="password"
                   value={newUserForm.password}
                   onChange={(e) => setNewUserForm({...newUserForm, password: e.target.value})}
+                  minLength={6}
                   required
+                />
+                <small>Minimum 6 caractères</small>
+              </div>
+              <div className="form-group">
+                <label><i className="fas fa-phone"></i> Téléphone</label>
+                <input
+                  type="tel"
+                  value={newUserForm.telephone}
+                  onChange={(e) => setNewUserForm({...newUserForm, telephone: e.target.value})}
+                  placeholder="034 00 000 00"
                 />
               </div>
               <div className="form-group">
@@ -324,7 +348,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                   value={newUserForm.role}
                   onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})}
                 >
-                  <option value="VISITEUR">Visiteur</option>
+                  <option value="UTILISATEUR">Utilisateur Mobile</option>
                   <option value="MANAGER">Manager</option>
                   <option value="ADMIN">Administrateur</option>
                 </select>
@@ -357,11 +381,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                   <option value="NOUVEAU">Nouveau (0%)</option>
                   <option value="EN_COURS">En cours (50%)</option>
                   <option value="TERMINE">Terminé (100%)</option>
-                  <option value="ANNULE">Annulé</option>
                 </select>
-                <small className="form-hint">
-                  L'avancement est calculé automatiquement : Nouveau = 0%, En cours = 50%, Terminé = 100%
-                </small>
               </div>
               <div className="form-group">
                 <label>Surface impactée (m²)</label>
@@ -388,6 +408,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                   <option value="">Sélectionner une entreprise</option>
                   <option value="COLAS Madagascar">COLAS Madagascar</option>
                   <option value="SOGEA SATOM">SOGEA SATOM</option>
+                  <option value="Madagascar TP">Madagascar TP</option>
                   <option value="ENTREPRISE RAZAFY">ENTREPRISE RAZAFY</option>
                   <option value="TRAVAUX PUBLICS MADA">TRAVAUX PUBLICS MADA</option>
                   <option value="BTP CONSTRUCTION">BTP CONSTRUCTION</option>
