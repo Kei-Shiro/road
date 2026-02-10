@@ -5,6 +5,32 @@
   width: 100%;
 }
 
+/* === Indicateur mode carte (Offline/Online) === */
+.map-mode-indicator {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.map-mode-indicator.offline {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.map-mode-indicator.online {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
 #map,
 .leaflet-container {
   width: 100%;

@@ -1,12 +1,16 @@
 {
   "options": {
     "paths": {
-      "root": "/data"
+      "root": "/data",
+      "fonts": "/data/fonts",
+      "sprites": "/data/sprites",
+      "styles": "/data/styles",
+      "mbtiles": "/data"
     }
   },
   "styles": {
-    "basic": {
-      "style": "basic.json",
+    "osm-bright": {
+      "style": "osm-bright/style.json",
       "tilejson": {
         "bounds": [47.35, -19.05, 47.70, -18.70]
       }
@@ -18,4 +22,3 @@
     }
   }
 }
-

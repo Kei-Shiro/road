@@ -128,7 +128,7 @@ import L from 'leaflet';
 import { useAuthStore } from '@/stores/authStore';
 import { useSignalementStore } from '@/stores/signalementStore';
 import { locationService } from '@/services/locationService';
-import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, STATUT_LABELS } from '@/utils/constants';
+import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, STATUT_LABELS, TILE_SERVER } from '@/utils/constants';
 import { formatDate, getMarkerColor } from '@/utils/helpers';
 import FilterModal from '@/components/FilterModal.vue';
 
@@ -189,14 +189,15 @@ function initMap() {
   // Ajouter le contrôle de zoom en haut à droite
   L.control.zoom({ position: 'topright' }).addTo(map.value);
 
-  // Ajouter les tuiles OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Ajouter les tuiles OpenStreetMap (avec fallback)
+  L.tileLayer(TILE_SERVER.ONLINE_URL, {
     maxZoom: 19,
+    attribution: TILE_SERVER.ATTRIBUTION,
   }).addTo(map.value);
 
   // Attribution en bas
   L.control.attribution({ position: 'bottomleft' })
-    .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
+    .addAttribution(TILE_SERVER.ATTRIBUTION)
     .addTo(map.value);
 
   // Gérer les clics sur la carte

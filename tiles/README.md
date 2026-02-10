@@ -1,70 +1,122 @@
-# Tuiles de carte pour Antananarivo
+# Tuiles de carte Offline pour Antananarivo
 
-Ce dossier contient les fichiers de tuiles pour le serveur de carte offline.
+Ce dossier contient les fichiers de configuration et les tuiles pour le serveur de carte offline (tileserver-gl).
 
-## Instructions de téléchargement
+## 🚀 Démarrage rapide
 
-Pour télécharger les données d'Antananarivo, suivez ces étapes :
+### Étape 1 : Télécharger les tuiles d'Antananarivo
 
-### Option 1 : Télécharger depuis OpenMapTiles (recommandé)
+#### Option A : Utiliser Protomaps (Recommandé - Plus simple)
 
-1. Allez sur https://data.maptiler.com/downloads/planet/
-2. Cherchez "Madagascar" ou téléchargez la région "Africa"
-3. Téléchargez le fichier `.mbtiles`
-4. Renommez-le en `antananarivo.mbtiles` et placez-le dans ce dossier
+1. Allez sur https://protomaps.com/downloads
+2. Naviguez vers Madagascar / Antananarivo
+3. Sélectionnez la zone d'Antananarivo avec les bounds suivantes :
+   - **Nord**: -18.70
+   - **Sud**: -19.05
+   - **Ouest**: 47.35
+   - **Est**: 47.70
+4. Téléchargez au format `.pmtiles` ou `.mbtiles`
+5. Renommez le fichier en `antananarivo.mbtiles` et placez-le dans ce dossier
 
-### Option 2 : Utiliser tilemaker pour créer vos propres tuiles
+#### Option B : Télécharger depuis MapTiler
+
+1. Créez un compte sur https://cloud.maptiler.com/
+2. Téléchargez les tuiles pour Madagascar
+3. Renommez en `antananarivo.mbtiles`
+
+#### Option C : Générer depuis OpenStreetMap
 
 ```bash
 # Télécharger les données OSM de Madagascar
 wget https://download.geofabrik.de/africa/madagascar-latest.osm.pbf
 
-# Installer tilemaker
-# Sur Ubuntu/Debian:
-# sudo apt install tilemaker
-
-# Générer les tuiles (nécessite tilemaker)
-tilemaker --input madagascar-latest.osm.pbf --output antananarivo.mbtiles --config config.json
+# Avec tilemaker (Linux/Mac)
+tilemaker --input madagascar-latest.osm.pbf --output antananarivo.mbtiles
 ```
 
-### Option 3 : Utiliser Protomaps
+### Étape 2 : Démarrer le serveur de tuiles
 
-1. Allez sur https://app.protomaps.com/downloads/osm
-2. Téléchargez la zone d'Antananarivo
-3. Convertissez en MBTiles si nécessaire
+```bash
+# Depuis la racine du projet
+docker-compose up tileserver -d
+```
 
-## Configuration du serveur
+Le serveur sera disponible sur : http://localhost:8081
 
-Le serveur tileserver-gl est configuré pour servir les tuiles sur le port 8081.
+### Étape 3 : Vérifier le fonctionnement
 
-URL des tuiles : `http://localhost:8081/styles/basic/{z}/{x}/{y}.png`
+- Interface web : http://localhost:8081
+- Endpoint santé : http://localhost:8081/health
+- Tuiles : http://localhost:8081/styles/osm-bright/{z}/{x}/{y}.png
 
-## Coordonnées d'Antananarivo
-
-- Centre : -18.8792, 47.5079
-- Zoom par défaut : 13
-- Bounds approximatives :
-  - Min lat: -19.05
-  - Max lat: -18.70
-  - Min lng: 47.35
-  - Max lng: 47.70
-
-## Structure attendue
+## 📁 Structure des fichiers
 
 ```
 tiles/
-├── README.md (ce fichier)
-├── antananarivo.mbtiles (fichier de tuiles)
-└── config.json (configuration optionnelle)
+├── config.json              # Configuration de tileserver-gl
+├── antananarivo.mbtiles     # Fichier de tuiles (à télécharger)
+├── README.md                # Ce fichier
+└── styles/                  # (optionnel) Styles personnalisés
+    └── osm-bright/
+        └── style.json
 ```
 
-## Vérification
+## ⚙️ Configuration
 
-Après avoir démarré Docker, vérifiez que le serveur fonctionne :
+Le fichier `config.json` configure le serveur de tuiles :
 
+```json
+{
+  "options": {
+    "paths": {
+      "root": "/data",
+      "mbtiles": "/data"
+    }
+  },
+  "data": {
+    "antananarivo": {
+      "mbtiles": "antananarivo.mbtiles"
+    }
+  }
+}
+```
+
+## 🗺️ Coordonnées d'Antananarivo
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Centre Latitude | -18.8792 |
+| Centre Longitude | 47.5079 |
+| Zoom par défaut | 13 |
+| Bounds Min Lat | -19.05 |
+| Bounds Max Lat | -18.70 |
+| Bounds Min Lng | 47.35 |
+| Bounds Max Lng | 47.70 |
+
+## 🔧 Dépannage
+
+### Le serveur ne démarre pas
+
+1. Vérifiez que le fichier `antananarivo.mbtiles` existe
+2. Vérifiez les logs : `docker logs road_tileserver`
+
+### Les tuiles ne s'affichent pas
+
+1. Vérifiez que le port 8081 est accessible
+2. L'application utilise automatiquement OpenStreetMap en ligne comme fallback
+
+### Erreur de configuration
+
+Vérifiez que le `config.json` est valide avec :
 ```bash
-curl http://localhost:8081/
+cat tiles/config.json | python -m json.tool
 ```
 
-Vous devriez voir l'interface TileServer-GL.
+## 📊 Fonctionnement avec l'application
 
+L'application web détecte automatiquement si le serveur offline est disponible :
+
+- ✅ **Serveur offline disponible** : Utilise les tuiles locales (plus rapide, fonctionne hors connexion)
+- 🌐 **Serveur offline non disponible** : Utilise OpenStreetMap en ligne (fallback automatique)
+
+Un indicateur visuel en haut à droite de la carte affiche le mode actuel.
