@@ -39,11 +39,10 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
       setUsers(usersData);
     } catch (error) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
-      if (showToast) showToast('error', 'Erreur lors du chargement des utilisateurs');
     } finally {
       setLoadingUsers(false);
     }
-  }, [showToast]);
+  }, []);
 
   // Charger les utilisateurs depuis l'API
   useEffect(() => {

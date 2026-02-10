@@ -11,6 +11,7 @@ const SignalementModal = ({ isOpen, onClose, onSuccess, location }) => {
     adresse: '',
     type: 'REPARATION',
     priorite: 'MOYENNE',
+    niveau: 1,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ const SignalementModal = ({ isOpen, onClose, onSuccess, location }) => {
         ...formData,
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
+        niveau: parseInt(formData.niveau),
       });
       onClose();
       if (onSuccess) onSuccess();
@@ -168,6 +170,25 @@ const SignalementModal = ({ isOpen, onClose, onSuccess, location }) => {
                 <option value="URGENTE">Urgente</option>
               </select>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="niveau">
+              <i className="fas fa-layer-group"></i> Niveau de réparation (1-10)
+            </label>
+            <select
+              id="niveau"
+              name="niveau"
+              value={formData.niveau}
+              onChange={handleChange}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <option key={n} value={n}>Niveau {n}</option>
+              ))}
+            </select>
+            <small className="form-hint">
+              1-3: Léger | 4-6: Moyen | 7-9: Important | 10: Reconstruction complète
+            </small>
           </div>
 
           <button
