@@ -1,6 +1,6 @@
 /**
- * Store d'authentification Pinia
- * Gère l'état de connexion de l'utilisateur
+ * Store d'authentification Pinia - Full Firebase
+ * Gère l'état de connexion de l'utilisateur via Firebase
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -45,17 +45,11 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = storedUser;
         token.value = storedToken;
         
-        // Vérifier la validité du token en récupérant le profil
+        // Vérifier la validité du token en récupérant le profil depuis Firebase
         try {
           const profile = await authService.getProfile();
           user.value = profile;
           await authService.updateStoredUser(profile);
-
-          // Démarrer le polling des notifications de changement de statut
-          if (profile?.id) {
-            const signalementStore = useSignalementStore();
-            signalementStore.startStatusPolling(profile.id);
-          }
         } catch (profileError) {
           // Token invalide, déconnecter
           console.warn('Token invalide, déconnexion:', profileError);
@@ -72,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Connexion avec email et mot de passe
+   * Connexion avec email et mot de passe via Firebase
    */
   async function login(email, password) {
     loading.value = true;
@@ -83,16 +77,10 @@ export const useAuthStore = defineStore('auth', () => {
       
       user.value = response.user;
       token.value = response.accessToken;
-      
-      // Démarrer le polling des notifications de changement de statut
-      if (response.user?.id) {
-        const signalementStore = useSignalementStore();
-        signalementStore.startStatusPolling(response.user.id);
-      }
 
       return response;
     } catch (err) {
-      error.value = err.response?.data?.message || 'Erreur de connexion';
+      error.value = err.message || 'Erreur de connexion';
       throw err;
     } finally {
       loading.value = false;
@@ -100,21 +88,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Connexion via Firebase
+   * Inscription d'un nouvel utilisateur via Firebase
    */
-  async function loginWithFirebase(email, password) {
+  async function register(data) {
     loading.value = true;
     error.value = null;
     
     try {
-      const response = await authService.loginWithFirebase(email, password);
-      
+      const response = await authService.register(data);
+
       user.value = response.user;
       token.value = response.accessToken;
-      
+
       return response;
     } catch (err) {
-      error.value = err.message || 'Erreur Firebase';
+      error.value = err.message || 'Erreur d\'inscription';
       throw err;
     } finally {
       loading.value = false;
@@ -143,6 +131,25 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Met à jour le profil utilisateur
+   */
+  async function updateProfile(data) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const updatedUser = await authService.updateProfile(data);
+      user.value = { ...user.value, ...updatedUser };
+      return updatedUser;
+    } catch (err) {
+      error.value = err.message || 'Erreur de mise à jour';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
    * Met à jour le profil utilisateur localement
    */
   function updateUser(userData) {
@@ -151,7 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Recharge le profil depuis le serveur
+   * Recharge le profil depuis Firebase
    */
   async function refreshProfile() {
     if (!isAuthenticated.value) return;
@@ -191,8 +198,9 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     initAuth,
     login,
-    loginWithFirebase,
+    register,
     logout,
+    updateProfile,
     updateUser,
     refreshProfile,
     clearError,
