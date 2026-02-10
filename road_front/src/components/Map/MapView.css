@@ -141,6 +141,16 @@
   text-decoration: none;
 }
 
+/* Style pour absence de photo */
+.popup-detail-value.no-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-weight: 400;
+}
+
 /* Niveau badge dans le popup */
 .popup-detail-value.niveau-badge {
   display: inline-flex;

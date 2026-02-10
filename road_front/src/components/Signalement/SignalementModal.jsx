@@ -35,7 +35,6 @@ const SignalementModal = ({ isOpen, onClose, onSuccess, location }) => {
         longitude: parseFloat(formData.longitude),
         niveau: parseInt(formData.niveau),
       });
-      onClose();
       if (onSuccess) onSuccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de la création du signalement');
@@ -198,11 +197,11 @@ const SignalementModal = ({ isOpen, onClose, onSuccess, location }) => {
           >
             {loading ? (
               <>
-                <i className="fas fa-spinner fa-spin"></i> Envoi...
+                <i className="fas fa-spinner fa-spin"></i> Envoi en cours...
               </>
             ) : (
               <>
-                <i className="fas fa-paper-plane"></i> Envoyer le signalement
+                <i className="fas fa-paper-plane"></i> Créer le signalement
               </>
             )}
           </button>

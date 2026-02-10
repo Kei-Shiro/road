@@ -147,19 +147,23 @@ const MapView = ({ signalements = [], onMapClick }) => {
                       )}
 
                       {/* Lien vers les photos */}
-                      {sig.photoUrl && (
-                          <div className="popup-detail popup-photos">
-                            <span className="popup-detail-label">Photos</span>
-                            <a
-                              href={sig.photoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="popup-photo-link"
-                            >
-                              <i className="fas fa-camera"></i> Voir les photos
-                            </a>
-                          </div>
-                      )}
+                      <div className="popup-detail popup-photos">
+                        <span className="popup-detail-label">Photo</span>
+                        {sig.photoUrl ? (
+                          <a
+                            href={sig.photoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="popup-photo-link"
+                          >
+                            <i className="fas fa-camera"></i> Voir la photo
+                          </a>
+                        ) : (
+                          <span className="popup-detail-value no-photo">
+                            <i className="fas fa-image"></i> Aucune photo
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Popup>
