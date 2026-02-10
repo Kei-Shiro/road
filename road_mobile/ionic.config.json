@@ -1,0 +1,7 @@
+{
+  "name": "road_mobile",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue"
+}

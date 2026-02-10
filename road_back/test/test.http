@@ -1,0 +1,187 @@
+### ============================================
+### Tests API Authentification avec Firebase
+### ============================================
+### Architecture:
+### - Firebase Auth: Gère les identifiants (email/password)
+### - Firestore (collection 'users'): Stocke les données additionnelles
+### - Le mot de passe n'est JAMAIS stocké dans Firestore
+### ============================================
+
+
+### 1. Vérifier le statut de connexion (Firebase/Local)
+GET http://localhost:8080/api/auth/status
+Content-Type: application/json
+
+###
+
+### ============================================
+### INSCRIPTION (Register)
+### ============================================
+### Si online:
+###   - Crée l'utilisateur dans Firebase Auth (email/password)
+###   - Crée les données dans Firestore (nom, prénom, rôle, etc.)
+###   - Crée aussi en local pour le mode offline
+### Si offline:
+###   - Crée uniquement en local
+### ============================================
+
+### 2. Inscription d'un nouvel utilisateur
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "nouveau-mana@test.com",
+  "password": "password123",
+  "nom": "Mana",
+  "prenom": "Judy",
+  "telephone": "0340000001"
+}
+
+###
+
+### ============================================
+### CONNEXION (Login)
+### ============================================
+### Si online:
+###   - Vérifie si l'utilisateur existe dans Firebase Auth
+###   - Récupère les données depuis Firestore
+###   - Synchronise les données localement
+###   - Authentifie le mot de passe localement
+### Si offline:
+###   - Authentifie uniquement localement
+### ============================================
+
+### 3. Connexion utilisateur créé via register
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nouveau-mana@test.com",
+  "password": "password123"
+}
+
+###
+
+@token=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJub3V2ZWF1LW1hbmFAdGVzdC5jb20iLCJpYXQiOjE3NzA3MTg5MTgsImV4cCI6MTc3MDgwNTMxOH0.rfGyDxgto1m75BrtNd80b7fP7dx-aas8SwcnCD3ictZMtA-p3eutMSj5yfHfZV99GKIyGXLzgb5llWL13DoyRw
+
+### 4. Connexion avec utilisateur Firebase existant (test@test.com)
+### Note: Cet utilisateur doit exister dans Firebase Auth avec ce mot de passe
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "password123"
+}
+
+###
+
+### ============================================
+### PROFIL UTILISATEUR
+### ============================================
+### Remplacer <TOKEN> par le accessToken reçu après login
+### ============================================
+
+### 5. Récupérer le profil (nécessite token)
+GET http://localhost:8080/api/auth/profile
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+
+###
+
+### ============================================
+### MODIFICATION PROFIL
+### ============================================
+### Si online:
+###   - Met à jour Firebase Auth (email, password)
+###   - Met à jour Firestore (nom, prénom, téléphone, rôle)
+###   - Met à jour localement
+### Si offline:
+###   - Met à jour uniquement localement
+### ============================================
+
+### 6. Modifier nom, prénom et téléphone
+PUT http://localhost:8080/api/auth/profile
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+
+{
+  "nom": "Dupont-Modifié",
+  "prenom": "Jean-Pierre",
+  "telephone": "0340000002"
+}
+
+###
+
+### 7. Modifier le mot de passe (Firebase Auth + local)
+PUT http://localhost:8080/api/auth/profile
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+
+{
+  "password": "nouveauPassword123"
+}
+
+###
+
+### 8. Modifier l'email (Firebase Auth + local)
+PUT http://localhost:8080/api/auth/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "nouveau.email@test.com"
+}
+
+###
+
+### ============================================
+### DÉCONNEXION
+### ============================================
+
+### 9. Déconnexion (met à jour isOnline dans Firestore)
+POST http://localhost:8080/api/auth/logout
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================
+### REFRESH TOKEN
+### ============================================
+
+### 10. Rafraîchir le token
+POST http://localhost:8080/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "<REFRESH_TOKEN>"
+}
+
+###
+
+### ============================================
+### DÉVERROUILLAGE COMPTE
+### ============================================
+
+### 11. Déverrouiller un compte (public)
+POST http://localhost:8080/api/auth/unlock/test@test.com
+Content-Type: application/json
+
+###
+
+### ============================================
+### TESTS VERROUILLAGE (3 mauvais mots de passe)
+### ============================================
+
+### 12. Test login avec mauvais mot de passe
+### Incrémente loginAttempts dans Firestore
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "mauvais_password"
+}
+
+###

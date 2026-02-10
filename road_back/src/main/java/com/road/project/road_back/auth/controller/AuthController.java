@@ -2,6 +2,7 @@ package com.road.project.road_back.auth.controller;
 
 import com.road.project.road_back.auth.dto.*;
 import com.road.project.road_back.auth.service.AuthService;
+import com.road.project.road_back.auth.service.FirebaseUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -18,6 +19,7 @@ import java.util.Map;
 
 /**
  * Contrôleur REST pour l'authentification.
+ * Supporte Firebase Firestore quand une connexion Internet est disponible.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -26,6 +28,21 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final FirebaseUserService firebaseUserService;
+
+    @GetMapping("/status")
+    @Operation(summary = "Vérifier le statut de connexion (Firebase/Local)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Statut récupéré")
+    })
+    public ResponseEntity<Map<String, Object>> getConnectionStatus() {
+        boolean isOnline = firebaseUserService.isOnline();
+        return ResponseEntity.ok(Map.of(
+                "online", isOnline,
+                "mode", isOnline ? "Firebase" : "Local",
+                "message", isOnline ? "Connecté à Firebase Firestore" : "Mode hors ligne - Base de données locale"
+        ));
+    }
 
     @PostMapping("/register")
     @Operation(summary = "Inscription d'un nouvel utilisateur")
@@ -171,14 +188,14 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Utilisateur supprimé avec succès"));
     }
 
-    /**
-     * Extrait le token JWT de l'en-tête Authorization.
-     */
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+/**
+ * Extrait le token JWT de l'en-tête Authorization.
+ */
+private String extractToken(HttpServletRequest request) {
+    String bearerToken = request.getHeader("Authorization");
+    if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+        return bearerToken.substring(7);
     }
+    return null;
+}
 }
