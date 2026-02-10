@@ -141,3 +141,15 @@
   text-decoration: none;
 }
 
+/* Niveau badge dans le popup */
+.popup-detail-value.niveau-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark, #1d4ed8));
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}

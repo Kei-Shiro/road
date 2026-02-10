@@ -11,6 +11,8 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
   const [users, setUsers] = useState([]);
   const [editingSignalement, setEditingSignalement] = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [prixParM2, setPrixParM2] = useState('50000');
+  const [loadingConfig, setLoadingConfig] = useState(false);
 
   // Formulaire de création d'utilisateur
   const [newUserForm, setNewUserForm] = useState({
@@ -26,7 +28,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
   const [editForm, setEditForm] = useState({
     statut: '',
     surfaceImpactee: '',
-    budget: '',
+    niveau: 1,
     entrepriseResponsable: ''
   });
 
@@ -48,12 +50,29 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
     loadUsers();
   }, [loadUsers]);
 
+  // Charger le prix par m² depuis l'API
+  const loadPrixParM2 = useCallback(async () => {
+    setLoadingConfig(true);
+    try {
+      const response = await signalementService.getPrixParM2();
+      setPrixParM2(response.prixParM2?.toString() || '50000');
+    } catch (error) {
+      console.error('Erreur lors du chargement du prix par m²:', error);
+    } finally {
+      setLoadingConfig(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPrixParM2();
+  }, [loadPrixParM2]);
+
   const handleEditSignalement = (signalement) => {
     setEditingSignalement(signalement);
     setEditForm({
       statut: signalement.statut || 'NOUVEAU',
       surfaceImpactee: signalement.surfaceImpactee || '',
-      budget: signalement.budget || '',
+      niveau: signalement.niveau || 1,
       entrepriseResponsable: signalement.entrepriseResponsable || ''
     });
   };
@@ -64,7 +83,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         ...editingSignalement,
         ...editForm,
         surfaceImpactee: editForm.surfaceImpactee ? parseFloat(editForm.surfaceImpactee) : null,
-        budget: editForm.budget ? parseFloat(editForm.budget) : null
+        niveau: editForm.niveau ? parseInt(editForm.niveau) : 1
       });
       setEditingSignalement(null);
       if (onUpdate) onUpdate();
@@ -85,6 +104,18 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         console.error('Erreur lors de la suppression:', error);
         if (showToast) showToast('error', 'Erreur lors de la suppression');
       }
+    }
+  };
+
+  const handleUpdatePrixParM2 = async (e) => {
+    e.preventDefault();
+    try {
+      await signalementService.updatePrixParM2(prixParM2);
+      if (showToast) showToast('success', 'Prix par m² mis à jour !');
+      if (onUpdate) onUpdate(); // Recalculer les budgets
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du prix par m²:', error);
+      if (showToast) showToast('error', 'Erreur lors de la mise à jour du prix par m²');
     }
   };
 
@@ -157,6 +188,12 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         >
           <i className="fas fa-user-plus"></i> Créer un compte
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'configuration' ? 'active' : ''}`}
+          onClick={() => setActiveTab('configuration')}
+        >
+          <i className="fas fa-sliders-h"></i> Configuration
+        </button>
       </div>
 
       {/* Tab Signalements */}
@@ -173,6 +210,7 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                   <th>Statut</th>
                   <th>Avancement</th>
                   <th>Surface (m²)</th>
+                  <th>Niveau</th>
                   <th>Budget (Ar)</th>
                   <th>Entreprise</th>
                   <th>Actions</th>
@@ -196,6 +234,9 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                       </div>
                     </td>
                     <td>{sig.surfaceImpactee || '-'}</td>
+                    <td>
+                      <span className="niveau-badge">{sig.niveau || 1}/10</span>
+                    </td>
                     <td>{sig.budget ? Number(sig.budget).toLocaleString() : '-'}</td>
                     <td>{sig.entrepriseResponsable || '-'}</td>
                     <td>
@@ -361,6 +402,63 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
         </div>
       )}
 
+      {/* Tab Configuration */}
+      {activeTab === 'configuration' && (
+        <div className="tab-content">
+          <div className="form-container config-container">
+            <h3><i className="fas fa-sliders-h"></i> Configuration du système</h3>
+
+            <div className="config-section">
+              <h4>Calcul du budget</h4>
+              <p className="config-description">
+                Le budget est calculé automatiquement selon la formule:<br/>
+                <code>Budget = Prix par m² × Niveau × Surface (m²)</code>
+              </p>
+
+              <form onSubmit={handleUpdatePrixParM2}>
+                <div className="form-group">
+                  <label><i className="fas fa-coins"></i> Prix forfaitaire par m² (Ariary)</label>
+                  <input
+                    type="number"
+                    value={prixParM2}
+                    onChange={(e) => setPrixParM2(e.target.value)}
+                    min="0"
+                    required
+                  />
+                  <small>Ce prix est multiplié par le niveau (1-10) et la surface pour calculer le budget total</small>
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={loadingConfig}>
+                  <i className="fas fa-save"></i> Enregistrer
+                </button>
+              </form>
+            </div>
+
+            <div className="config-section">
+              <h4>Niveaux de réparation</h4>
+              <p className="config-description">
+                Les niveaux de réparation vont de 1 à 10 et permettent de catégoriser la complexité des travaux:
+              </p>
+              <ul className="niveau-list">
+                <li><strong>Niveau 1-3:</strong> Réparations légères (nids de poule, fissures superficielles)</li>
+                <li><strong>Niveau 4-6:</strong> Réparations moyennes (resurfaçage partiel, drainage)</li>
+                <li><strong>Niveau 7-9:</strong> Réparations importantes (reconstruction partielle)</li>
+                <li><strong>Niveau 10:</strong> Reconstruction complète de la chaussée</li>
+              </ul>
+            </div>
+
+            <div className="config-section">
+              <h4>Exemple de calcul</h4>
+              <div className="calculation-example">
+                <p>Pour une surface de <strong>100 m²</strong> avec un niveau <strong>5</strong>:</p>
+                <p className="calculation-formula">
+                  {Number(prixParM2).toLocaleString()} Ar × 5 × 100 m² = <strong>{Number(prixParM2 * 5 * 100).toLocaleString()} Ar</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'édition de signalement */}
       {editingSignalement && (
         <div className="modal-overlay" onClick={() => setEditingSignalement(null)}>
@@ -392,12 +490,19 @@ const AdminPanel = ({ signalements, stats, onUpdate, showToast }) => {
                 />
               </div>
               <div className="form-group">
-                <label>Budget (Ariary)</label>
-                <input
-                  type="number"
-                  value={editForm.budget}
-                  onChange={(e) => setEditForm({...editForm, budget: e.target.value})}
-                />
+                <label>Niveau de réparation (1-10)</label>
+                <select
+                  value={editForm.niveau}
+                  onChange={(e) => setEditForm({...editForm, niveau: parseInt(e.target.value)})}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <option key={n} value={n}>Niveau {n}</option>
+                  ))}
+                </select>
+                <small className="form-hint">
+                  Budget calculé automatiquement: {prixParM2} Ar × {editForm.niveau || 1} × {editForm.surfaceImpactee || 0} m²
+                  = <strong>{Number(prixParM2 * (editForm.niveau || 1) * (editForm.surfaceImpactee || 0)).toLocaleString()} Ar</strong>
+                </small>
               </div>
               <div className="form-group">
                 <label>Entreprise responsable</label>

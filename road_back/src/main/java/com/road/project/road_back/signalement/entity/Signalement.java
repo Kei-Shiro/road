@@ -49,8 +49,12 @@ public class Signalement {
     @Column(name = "surface_impactee")
     private Double surfaceImpactee; // en m²
 
+    @Column
+    @Builder.Default
+    private Integer niveau = 1; // Niveau de réparation de 1 à 10
+
     @Column(precision = 15, scale = 2)
-    private BigDecimal budget; // en Ariary
+    private BigDecimal budget; // en Ariary (calculé automatiquement: prix_par_m2 * niveau * surface_m2)
 
     @Column(name = "entreprise_responsable")
     private String entrepriseResponsable;

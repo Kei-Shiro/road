@@ -149,3 +149,11 @@ VALUES
     NOW()
 );
 
+-- Insertion de la configuration par défaut du prix par m²
+INSERT INTO configurations (cle, valeur, description, updated_at)
+VALUES (
+    'PRIX_PAR_M2',
+    '50000',
+    'Prix forfaitaire par m² pour le calcul du budget des réparations (en Ariary)',
+    NOW()
+) ON CONFLICT (cle) DO NOTHING;

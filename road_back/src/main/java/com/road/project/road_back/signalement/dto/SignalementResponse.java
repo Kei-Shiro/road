@@ -27,6 +27,7 @@ public class SignalementResponse {
     private String adresse;
     private StatutSignalement statut;
     private Double surfaceImpactee;
+    private Integer niveau;
     private BigDecimal budget;
     private String entrepriseResponsable;
     private LocalDate dateDebut;

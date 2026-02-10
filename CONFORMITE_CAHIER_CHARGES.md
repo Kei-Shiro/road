@@ -1,6 +1,6 @@
 # CONFORMITÉ AU CAHIER DES CHARGES - Projet Road
 
-**Date de vérification:** 9 février 2026
+**Date de vérification:** 10 février 2026
 
 ## Résumé de Conformité
 
@@ -54,12 +54,22 @@
 |----------|------|----------------|
 | Création compte utilisateur | ✅ | `AdminPanel.jsx` - `handleCreateUser()` |
 | Bouton synchronisation Firebase | ⛔ | Ignoré selon consigne |
-| Page débloquer utilisateurs | ✅ | `AdminPanel.jsx` - `handleBlockUser()` |
-| Gestion infos signalement | ✅ | Modal d'édition avec surface, budget, entreprise |
+| Page débloquer utilisateurs | ✅ | `AdminPanel.jsx` - `handleUnlockUser()` |
+| Gestion infos signalement | ✅ | Modal d'édition avec surface, niveau, entreprise |
 | Modifier statuts | ✅ | Select statut dans modal d'édition |
 | Avancement: 0%/50%/100% | ✅ | `SignalementService.calculerPourcentageParStatut()` |
 | Dates par étape | ✅ | `dateNouveau`, `dateEnCours`, `dateTermine` dans entité |
 | Tableau délai traitement moyen | ✅ | `TraitementStats.jsx` avec temps moyens calculés |
+| Catégoriser réparations niveau 1-10 | ✅ | Champ `niveau` dans entité Signalement |
+| Prix par m² forfaitaire configurable | ✅ | Tab Configuration dans AdminPanel, entité `Configuration` |
+| Budget calculé automatiquement | ✅ | `prix_par_m2 * niveau * surface_m2` dans SignalementService |
+
+### Module Web (Visiteurs) ✅
+
+| Exigence | État | Implémentation |
+|----------|------|----------------|
+| Survol point = infos (date, statut, surface, budget, entreprise, niveau) | ✅ | Popup dans `MapView.jsx` avec niveau affiché |
+| Lien vers photos | ✅ | Ajouté dans popup avec CSS `.popup-photo-link` |
 
 ### Module Mobile ✅
 
@@ -81,13 +91,16 @@
 - `road_back/src/main/java/com/road/project/road_back/auth/controller/AuthController.java`
 - `road_back/src/main/java/com/road/project/road_back/auth/service/AuthService.java`
 - `road_back/src/main/java/com/road/project/road_back/signalement/service/SignalementService.java`
+- `road_back/src/main/java/com/road/project/road_back/signalement/entity/Configuration.java` (Prix par m²)
+- `road_back/src/main/java/com/road/project/road_back/signalement/repository/ConfigurationRepository.java`
 - `road_back/src/main/resources/application.properties`
 
 ### Frontend Web (React)
-- `road_front/src/components/Map/MapView.jsx`
-- `road_front/src/components/Admin/AdminPanel.jsx`
+- `road_front/src/components/Map/MapView.jsx` (Affichage niveau dans popup)
+- `road_front/src/components/Admin/AdminPanel.jsx` (Gestion niveau + Configuration prix/m²)
 - `road_front/src/components/Stats/StatsPanel.jsx`
 - `road_front/src/components/Stats/TraitementStats.jsx`
+- `road_front/src/services/signalementService.js` (API prix/m²)
 
 ### Mobile (Vue.js/Ionic/Capacitor)
 - `road_mobile/src/views/CreateSignalementPage.vue`

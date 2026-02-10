@@ -418,3 +418,96 @@
   font-style: italic;
 }
 
+/* === Niveau Badge === */
+.niveau-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+}
+
+/* === Configuration Section === */
+.config-container {
+  max-width: 800px;
+}
+
+.config-section {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.config-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.config-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.config-description code {
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+}
+
+.niveau-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.niveau-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.niveau-list li:last-child {
+  border-bottom: none;
+}
+
+.niveau-list li strong {
+  color: var(--text-primary);
+}
+
+.calculation-example {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.calculation-example p {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.calculation-formula {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.calculation-formula strong {
+  color: var(--success-color);
+  font-size: 1.1rem;
+}
