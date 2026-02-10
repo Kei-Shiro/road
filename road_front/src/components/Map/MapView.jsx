@@ -121,6 +121,13 @@ const MapView = ({ signalements = [], onMapClick }) => {
                     </span>
                       </div>
 
+                      <div className="popup-detail">
+                        <span className="popup-detail-label">Niveau</span>
+                        <span className="popup-detail-value niveau-badge">
+                          {sig.niveau || 1} / 10
+                        </span>
+                      </div>
+
                       {sig.entrepriseResponsable && (
                           <div className="popup-detail">
                             <span className="popup-detail-label">Entreprise</span>

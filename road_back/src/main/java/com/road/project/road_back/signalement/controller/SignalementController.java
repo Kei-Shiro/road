@@ -133,5 +133,51 @@ public class SignalementController {
     public ResponseEntity<SyncResponse> syncSignalements(@RequestBody SyncRequest request) {
         return ResponseEntity.ok(signalementService.syncSignalements(request));
     }
+
+    @GetMapping("/config/prix-m2")
+    @Operation(summary = "Récupérer le prix par m² forfaitaire")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Prix par m² récupéré")
+    })
+    public ResponseEntity<Map<String, Object>> getPrixParM2() {
+        return ResponseEntity.ok(Map.of("prixParM2", signalementService.getPrixParM2()));
+    }
+
+    @PutMapping("/config/prix-m2")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Mettre à jour le prix par m² forfaitaire (Manager)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Prix par m² mis à jour"),
+            @ApiResponse(responseCode = "401", description = "Non authentifié"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    public ResponseEntity<ConfigurationResponse> updatePrixParM2(@RequestBody Map<String, String> body) {
+        java.math.BigDecimal prixParM2 = new java.math.BigDecimal(body.get("prixParM2"));
+        return ResponseEntity.ok(signalementService.setPrixParM2(prixParM2));
+    }
+
+    @GetMapping("/config")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Récupérer toutes les configurations (Manager)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Configurations récupérées"),
+            @ApiResponse(responseCode = "401", description = "Non authentifié"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    public ResponseEntity<List<ConfigurationResponse>> getAllConfigurations() {
+        return ResponseEntity.ok(signalementService.getAllConfigurations());
+    }
+
+    @PutMapping("/config")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Mettre à jour une configuration (Manager)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Configuration mise à jour"),
+            @ApiResponse(responseCode = "401", description = "Non authentifié"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    public ResponseEntity<ConfigurationResponse> updateConfiguration(@Valid @RequestBody ConfigurationRequest request) {
+        return ResponseEntity.ok(signalementService.updateConfiguration(request));
+    }
 }
 

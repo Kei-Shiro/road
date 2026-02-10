@@ -40,6 +40,8 @@ public class SignalementRequest {
 
     private Double surfaceImpactee;
 
+    private Integer niveau; // Niveau de réparation de 1 à 10
+
     private BigDecimal budget;
 
     private String entrepriseResponsable;

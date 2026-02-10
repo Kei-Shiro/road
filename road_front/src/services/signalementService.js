@@ -51,5 +51,20 @@ export const signalementService = {
     const response = await api.post('/signalements/sync', data);
     return response.data;
   },
+
+  async getPrixParM2() {
+    const response = await api.get('/signalements/config/prix-m2');
+    return response.data;
+  },
+
+  async updatePrixParM2(prixParM2) {
+    const response = await api.put('/signalements/config/prix-m2', { prixParM2: prixParM2.toString() });
+    return response.data;
+  },
+
+  async getConfigurations() {
+    const response = await api.get('/signalements/config');
+    return response.data;
+  },
 };
 

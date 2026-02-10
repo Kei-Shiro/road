@@ -3,8 +3,10 @@ package com.road.project.road_back.signalement.service;
 import com.road.project.road_back.auth.entity.User;
 import com.road.project.road_back.auth.repository.UserRepository;
 import com.road.project.road_back.signalement.dto.*;
+import com.road.project.road_back.signalement.entity.Configuration;
 import com.road.project.road_back.signalement.entity.Signalement;
 import com.road.project.road_back.signalement.entity.StatutSignalement;
+import com.road.project.road_back.signalement.repository.ConfigurationRepository;
 import com.road.project.road_back.signalement.repository.SignalementRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class SignalementService {
 
     private final SignalementRepository signalementRepository;
     private final UserRepository userRepository;
+    private final ConfigurationRepository configurationRepository;
 
     /**
      * Récupère tous les signalements paginés.
@@ -76,6 +79,14 @@ public class SignalementService {
         Integer pourcentage = calculerPourcentageParStatut(statut);
         LocalDateTime now = LocalDateTime.now();
 
+        // Niveau par défaut à 1 si non spécifié
+        Integer niveau = request.getNiveau() != null ? request.getNiveau() : 1;
+        // S'assurer que le niveau est entre 1 et 10
+        niveau = Math.max(1, Math.min(10, niveau));
+
+        // Calcul automatique du budget: prix_par_m2 * niveau * surface_m2
+        BigDecimal budget = calculerBudget(request.getSurfaceImpactee(), niveau);
+
         Signalement signalement = Signalement.builder()
                 .titre(request.getTitre())
                 .description(request.getDescription())
@@ -84,7 +95,8 @@ public class SignalementService {
                 .adresse(request.getAdresse())
                 .statut(statut)
                 .surfaceImpactee(request.getSurfaceImpactee())
-                .budget(request.getBudget())
+                .niveau(niveau)
+                .budget(budget)
                 .entrepriseResponsable(request.getEntrepriseResponsable())
                 .dateDebut(request.getDateDebut())
                 .dateFinPrevue(request.getDateFinPrevue())
@@ -127,8 +139,25 @@ public class SignalementService {
             updateStatutWithDates(signalement, request.getStatut());
         }
 
-        if (request.getSurfaceImpactee() != null) signalement.setSurfaceImpactee(request.getSurfaceImpactee());
-        if (request.getBudget() != null) signalement.setBudget(request.getBudget());
+        // Gestion du niveau (entre 1 et 10)
+        boolean needRecalculateBudget = false;
+        if (request.getNiveau() != null) {
+            Integer niveau = Math.max(1, Math.min(10, request.getNiveau()));
+            signalement.setNiveau(niveau);
+            needRecalculateBudget = true;
+        }
+
+        if (request.getSurfaceImpactee() != null) {
+            signalement.setSurfaceImpactee(request.getSurfaceImpactee());
+            needRecalculateBudget = true;
+        }
+
+        // Recalcul automatique du budget si niveau ou surface ont changé
+        if (needRecalculateBudget) {
+            BigDecimal budget = calculerBudget(signalement.getSurfaceImpactee(), signalement.getNiveau());
+            signalement.setBudget(budget);
+        }
+
         if (request.getEntrepriseResponsable() != null) signalement.setEntrepriseResponsable(request.getEntrepriseResponsable());
         if (request.getDateDebut() != null) signalement.setDateDebut(request.getDateDebut());
         if (request.getDateFinPrevue() != null) signalement.setDateFinPrevue(request.getDateFinPrevue());
@@ -426,6 +455,13 @@ public class SignalementService {
         Integer pourcentage = calculerPourcentageParStatut(statut);
         LocalDateTime now = LocalDateTime.now();
 
+        // Niveau par défaut à 1 si non spécifié
+        Integer niveau = request.getNiveau() != null ? request.getNiveau() : 1;
+        niveau = Math.max(1, Math.min(10, niveau));
+
+        // Calcul automatique du budget
+        BigDecimal budget = calculerBudget(request.getSurfaceImpactee(), niveau);
+
         return Signalement.builder()
                 .titre(request.getTitre())
                 .description(request.getDescription())
@@ -434,7 +470,8 @@ public class SignalementService {
                 .adresse(request.getAdresse())
                 .statut(statut)
                 .surfaceImpactee(request.getSurfaceImpactee())
-                .budget(request.getBudget())
+                .niveau(niveau)
+                .budget(budget)
                 .entrepriseResponsable(request.getEntrepriseResponsable())
                 .dateDebut(request.getDateDebut())
                 .dateFinPrevue(request.getDateFinPrevue())
@@ -478,6 +515,7 @@ public class SignalementService {
                 .adresse(signalement.getAdresse())
                 .statut(signalement.getStatut())
                 .surfaceImpactee(signalement.getSurfaceImpactee())
+                .niveau(signalement.getNiveau())
                 .budget(signalement.getBudget())
                 .entrepriseResponsable(signalement.getEntrepriseResponsable())
                 .dateDebut(signalement.getDateDebut())
@@ -496,6 +534,94 @@ public class SignalementService {
                 .createdAt(signalement.getCreatedAt())
                 .updatedAt(signalement.getUpdatedAt())
                 .createdBy(createdByDto)
+                .build();
+    }
+
+    /**
+     * Calcule le budget automatiquement: prix_par_m2 * niveau * surface_m2
+     */
+    private BigDecimal calculerBudget(Double surfaceImpactee, Integer niveau) {
+        if (surfaceImpactee == null || surfaceImpactee <= 0 || niveau == null) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal prixParM2 = getPrixParM2();
+        BigDecimal surface = BigDecimal.valueOf(surfaceImpactee);
+        BigDecimal niveauDecimal = BigDecimal.valueOf(niveau);
+
+        return prixParM2.multiply(niveauDecimal).multiply(surface);
+    }
+
+    /**
+     * Récupère le prix par m² forfaitaire depuis la configuration.
+     */
+    public BigDecimal getPrixParM2() {
+        return configurationRepository.findByCle(Configuration.PRIX_PAR_M2)
+                .map(config -> new BigDecimal(config.getValeur()))
+                .orElse(Configuration.PRIX_PAR_M2_DEFAULT);
+    }
+
+    /**
+     * Met à jour le prix par m² forfaitaire.
+     */
+    @Transactional
+    public ConfigurationResponse setPrixParM2(BigDecimal prixParM2) {
+        Configuration config = configurationRepository.findByCle(Configuration.PRIX_PAR_M2)
+                .orElse(Configuration.builder()
+                        .cle(Configuration.PRIX_PAR_M2)
+                        .description("Prix forfaitaire par m² pour le calcul du budget des réparations")
+                        .build());
+
+        config.setValeur(prixParM2.toString());
+        config = configurationRepository.save(config);
+
+        return mapConfigToResponse(config);
+    }
+
+    /**
+     * Récupère toutes les configurations.
+     */
+    public List<ConfigurationResponse> getAllConfigurations() {
+        return configurationRepository.findAll().stream()
+                .map(this::mapConfigToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère une configuration par sa clé.
+     */
+    public ConfigurationResponse getConfiguration(String cle) {
+        return configurationRepository.findByCle(cle)
+                .map(this::mapConfigToResponse)
+                .orElse(null);
+    }
+
+    /**
+     * Met à jour une configuration.
+     */
+    @Transactional
+    public ConfigurationResponse updateConfiguration(ConfigurationRequest request) {
+        Configuration config = configurationRepository.findByCle(request.getCle())
+                .orElse(Configuration.builder()
+                        .cle(request.getCle())
+                        .build());
+
+        config.setValeur(request.getValeur());
+        if (request.getDescription() != null) {
+            config.setDescription(request.getDescription());
+        }
+        config = configurationRepository.save(config);
+
+        return mapConfigToResponse(config);
+    }
+
+    private ConfigurationResponse mapConfigToResponse(Configuration config) {
+        return ConfigurationResponse.builder()
+                .id(config.getId())
+                .cle(config.getCle())
+                .valeur(config.getValeur())
+                .description(config.getDescription())
+                .updatedAt(config.getUpdatedAt())
                 .build();
     }
 }
