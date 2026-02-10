@@ -137,6 +137,7 @@ import L from 'leaflet';
 import { useAuthStore } from '@/stores/authStore';
 import { useSignalementStore } from '@/stores/signalementStore';
 import { locationService } from '@/services/locationService';
+import { useMapMarkers } from '@/composables/useMapMarkers';
 import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, STATUT_LABELS } from '@/utils/constants';
 import { formatDate, getMarkerColor } from '@/utils/helpers';
 import FilterModal from '@/components/FilterModal.vue';
@@ -151,7 +152,6 @@ const signalementStore = useSignalementStore();
 // Refs
 const mapContainer = ref(null);
 const map = ref(null);
-const markers = ref([]);
 const userMarker = ref(null);
 const userPosition = ref(null);
 const locatingUser = ref(false);
@@ -159,6 +159,9 @@ const showLegend = ref(true);
 const showFilterModal = ref(false);
 const showQuickCreate = ref(false);
 const selectedPosition = ref(null);
+
+// Map markers composable
+let mapMarkersComposable = null;
 
 // Computed
 const loading = computed(() => signalementStore.loading);
@@ -168,6 +171,7 @@ const canCreateSignalement = computed(() => authStore.canCreateSignalement);
 // Initialisation de la carte
 onMounted(async () => {
   await initMap();
+  mapMarkersComposable = useMapMarkers(map.value);
   await loadSignalements();
   await getUserLocation();
 });
@@ -202,32 +206,58 @@ function refreshMapSize() {
 async function initMap() {
   if (!mapContainer.value) return;
 
-   // Créer la carte
-   map.value = L.map(mapContainer.value, {
-     zoomControl: false,
-     attributionControl: false,
-   }).setView(TANA_CENTER, TANA_ZOOM);
-  window.addEventListener('resize', refreshMapSize);
+  try {
+    // Créer la carte avec configuration optimale
+    map.value = L.map(mapContainer.value, {
+      zoomControl: false,
+      attributionControl: false,
+      preferCanvas: true,
+      fadeAnimation: true,
+      zoomAnimation: true,
+    }).setView(TANA_CENTER, TANA_ZOOM);
 
-   // Ajouter le contrôle de zoom en haut à droite
-   L.control.zoom({ position: 'topright' }).addTo(map.value);
+    // Forcer la mise à jour du DOM et du canvas
+    await nextTick();
 
-   // Ajouter les tuiles OpenStreetMap
-   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-     maxZoom: 19,
-   }).addTo(map.value);
+    window.addEventListener('resize', refreshMapSize);
 
-   // Attribution en bas
-   L.control.attribution({ position: 'bottomleft' })
-     .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
-     .addTo(map.value);
+    // Ajouter le contrôle de zoom en haut à droite
+    L.control.zoom({ position: 'topright' }).addTo(map.value);
 
-   // Gérer les clics sur la carte
-   map.value.on('click', handleMapClick);
+    // Ajouter les tuiles OpenStreetMap avec options de chargement
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      minZoom: 2,
+      attribution: '© OpenStreetMap contributors',
+      crossOrigin: true,
+    }).addTo(map.value);
 
-   await nextTick();
-   refreshMapSize();
-   setTimeout(refreshMapSize, 250);
+    // Attribution personnalisée
+    L.control.attribution({ position: 'bottomleft' })
+      .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
+      .addTo(map.value);
+
+    // Gérer les clics sur la carte
+    map.value.on('click', handleMapClick);
+
+    // Invalider la taille de la carte plusieurs fois pour s'assurer qu'elle est correctement rendue
+    refreshMapSize();
+    await nextTick();
+    setTimeout(() => {
+      refreshMapSize();
+    }, 100);
+    setTimeout(() => {
+      refreshMapSize();
+    }, 250);
+  } catch (error) {
+    console.error('Erreur lors de l\'initialisation de la carte:', error);
+    const toast = await toastController.create({
+      message: 'Erreur d\'initialisation de la carte',
+      duration: 3000,
+      color: 'danger',
+    });
+    await toast.present();
+  }
 }
 
 /**
@@ -251,70 +281,11 @@ async function loadSignalements() {
  * Met à jour les marqueurs sur la carte
  */
 function updateMarkers() {
-  // Supprimer les anciens marqueurs
-  markers.value.forEach(marker => marker.remove());
-  markers.value = [];
+  if (!mapMarkersComposable || !map.value) return;
 
-  // Ajouter les nouveaux marqueurs
-  signalements.value.forEach(sig => {
-    if (!sig.latitude || !sig.longitude) return;
-
-    const color = getMarkerColor(sig.statut);
-    
-    // Créer une icône personnalisée
-    const icon = L.divIcon({
-      className: 'custom-div-icon',
-      html: `
-        <div class="custom-marker" style="background-color: ${color}">
-          ⚠️
-        </div>
-      `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 36],
-      popupAnchor: [0, -36],
-    });
-
-    // Créer le marqueur
-    const marker = L.marker([sig.latitude, sig.longitude], { icon })
-      .addTo(map.value)
-      .bindPopup(createPopupContent(sig));
-
-    // Ouvrir les détails au clic sur le marqueur
-    marker.on('click', () => {
-      setTimeout(() => {
-        const detailButton = document.querySelector(`.popup-detail-btn[data-id="${sig.id}"]`);
-        if (detailButton) {
-          detailButton.addEventListener('click', () => {
-            router.push(`/signalement/${sig.id}`);
-          });
-        }
-      }, 100);
-    });
-
-    markers.value.push(marker);
+  mapMarkersComposable.updateMarkers(signalements.value, (signalementId) => {
+    router.push(`/signalement/${signalementId}`);
   });
-}
-
-/**
- * Crée le contenu HTML du popup
- */
-function createPopupContent(sig) {
-  return `
-    <div class="popup-content">
-      <div class="popup-header">
-        <span class="status-badge ${sig.statut.toLowerCase()}">${STATUT_LABELS[sig.statut]}</span>
-        <h4>${sig.titre}</h4>
-      </div>
-      <div class="popup-body">
-        <p><strong>Adresse:</strong> ${sig.adresse || 'Non renseignée'}</p>
-        <p><strong>Date:</strong> ${formatDate(sig.createdAt)}</p>
-        ${sig.description ? `<p>${sig.description.substring(0, 100)}...</p>` : ''}
-      </div>
-      <div class="popup-footer">
-        <button class="popup-detail-btn" data-id="${sig.id}">Voir les détails →</button>
-      </div>
-    </div>
-  `;
 }
 
 /**
@@ -337,17 +308,19 @@ async function getUserLocation() {
       userMarker.value.remove();
     }
 
-    const userIcon = L.divIcon({
-      className: 'user-location-icon',
-      html: `
-        <div class="user-marker">
-          <div class="user-marker-pulse"></div>
-          <div class="user-marker-dot"></div>
-        </div>
-      `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
+    const userIcon = mapMarkersComposable
+      ? mapMarkersComposable.createUserLocationIcon()
+      : L.divIcon({
+          className: 'user-location-icon',
+          html: `
+            <div class="user-marker">
+              <div class="user-marker-pulse"></div>
+              <div class="user-marker-dot"></div>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
 
     userMarker.value = L.marker([position.latitude, position.longitude], { icon: userIcon })
       .addTo(map.value)
@@ -410,17 +383,19 @@ async function centerOnUserWithAnimation() {
       if (userMarker.value) {
         userMarker.value.setLatLng([position.latitude, position.longitude]);
       } else {
-        const userIcon = L.divIcon({
-          className: 'user-location-icon',
-          html: `
-            <div class="user-marker">
-              <div class="user-marker-pulse"></div>
-              <div class="user-marker-dot"></div>
-            </div>
-          `,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
+        const userIcon = mapMarkersComposable
+          ? mapMarkersComposable.createUserLocationIcon()
+          : L.divIcon({
+              className: 'user-location-icon',
+              html: `
+                <div class="user-marker">
+                  <div class="user-marker-pulse"></div>
+                  <div class="user-marker-dot"></div>
+                </div>
+              `,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            });
 
         userMarker.value = L.marker([position.latitude, position.longitude], { icon: userIcon })
           .addTo(map.value)
@@ -521,15 +496,23 @@ function applyFilters(filters) {
 <style scoped>
 .map-content {
   position: relative;
+  overflow: hidden;
   --overflow: hidden;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 #map {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1;
+  background-color: #f0f0f0;
 }
 
 /* Légende */
