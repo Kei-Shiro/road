@@ -139,7 +139,6 @@ import { useSignalementStore } from '@/stores/signalementStore';
 import { locationService } from '@/services/locationService';
 import { useMapMarkers } from '@/composables/useMapMarkers';
 import { TANA_CENTER, TANA_ZOOM, STATUT_COLORS, STATUT_LABELS } from '@/utils/constants';
-import { formatDate, getMarkerColor } from '@/utils/helpers';
 import FilterModal from '@/components/FilterModal.vue';
 
 // Router
