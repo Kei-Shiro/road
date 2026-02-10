@@ -187,16 +187,15 @@ public class AuthController {
         authService.deleteUser(userId);
         return ResponseEntity.ok(Map.of("message", "Utilisateur supprimé avec succès"));
     }
-}
 
-    /**
-     * Extrait le token JWT de l'en-tête Authorization.
-     */
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+/**
+ * Extrait le token JWT de l'en-tête Authorization.
+ */
+private String extractToken(HttpServletRequest request) {
+    String bearerToken = request.getHeader("Authorization");
+    if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+        return bearerToken.substring(7);
     }
+    return null;
+}
 }
