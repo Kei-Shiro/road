@@ -170,6 +170,7 @@ public class AuthController {
         authService.deleteUser(userId);
         return ResponseEntity.ok(Map.of("message", "Utilisateur supprimé avec succès"));
     }
+}
 
     /**
      * Extrait le token JWT de l'en-tête Authorization.

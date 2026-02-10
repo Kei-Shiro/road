@@ -9,10 +9,6 @@
       <ion-toolbar>
         <ion-title>Carte des signalements</ion-title>
         <ion-buttons slot="end">
-          <!-- Bouton de localisation -->
-          <ion-button @click="centerOnUser" :disabled="!userPosition">
-            <ion-icon slot="icon-only" :icon="locateOutline"></ion-icon>
-          </ion-button>
           <!-- Bouton de filtre -->
           <ion-button @click="showFilterModal = true">
             <ion-icon slot="icon-only" :icon="filterOutline"></ion-icon>
@@ -50,6 +46,18 @@
         @click="showLegend = true"
       >
         <ion-icon :icon="informationCircleOutline"></ion-icon>
+      </ion-button>
+
+      <ion-button
+        class="locate-button"
+        size="small"
+        fill="solid"
+        color="light"
+        @click="centerOnUserWithAnimation"
+        :disabled="locatingUser"
+      >
+        <ion-spinner v-if="locatingUser" name="crescent" slot="icon-only"></ion-spinner>
+        <ion-icon v-else :icon="locateOutline" slot="icon-only"></ion-icon>
       </ion-button>
 
       <!-- FAB pour créer un signalement -->
@@ -98,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -114,6 +122,7 @@ import {
   IonSpinner,
   IonModal,
   toastController,
+  onIonViewDidEnter,
 } from '@ionic/vue';
 import {
   addOutline,
@@ -145,6 +154,7 @@ const map = ref(null);
 const markers = ref([]);
 const userMarker = ref(null);
 const userPosition = ref(null);
+const locatingUser = ref(false);
 const showLegend = ref(true);
 const showFilterModal = ref(false);
 const showQuickCreate = ref(false);
@@ -157,9 +167,13 @@ const canCreateSignalement = computed(() => authStore.canCreateSignalement);
 
 // Initialisation de la carte
 onMounted(async () => {
-  initMap();
+  await initMap();
   await loadSignalements();
   await getUserLocation();
+});
+
+onIonViewDidEnter(() => {
+  refreshMapSize();
 });
 
 // Nettoyage
@@ -167,6 +181,7 @@ onUnmounted(() => {
   if (map.value) {
     map.value.remove();
   }
+  window.removeEventListener('resize', refreshMapSize);
 });
 
 // Observer les changements de signalements
@@ -174,33 +189,45 @@ watch(signalements, () => {
   updateMarkers();
 }, { deep: true });
 
+function refreshMapSize() {
+  if (!map.value) return;
+  requestAnimationFrame(() => {
+    map.value.invalidateSize(true);
+  });
+}
+
 /**
  * Initialise la carte Leaflet
  */
-function initMap() {
+async function initMap() {
   if (!mapContainer.value) return;
 
-  // Créer la carte
-  map.value = L.map(mapContainer.value, {
-    zoomControl: false,
-    attributionControl: false,
-  }).setView(TANA_CENTER, TANA_ZOOM);
+   // Créer la carte
+   map.value = L.map(mapContainer.value, {
+     zoomControl: false,
+     attributionControl: false,
+   }).setView(TANA_CENTER, TANA_ZOOM);
+  window.addEventListener('resize', refreshMapSize);
 
-  // Ajouter le contrôle de zoom en haut à droite
-  L.control.zoom({ position: 'topright' }).addTo(map.value);
+   // Ajouter le contrôle de zoom en haut à droite
+   L.control.zoom({ position: 'topright' }).addTo(map.value);
 
-  // Ajouter les tuiles OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-  }).addTo(map.value);
+   // Ajouter les tuiles OpenStreetMap
+   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+     maxZoom: 19,
+   }).addTo(map.value);
 
-  // Attribution en bas
-  L.control.attribution({ position: 'bottomleft' })
-    .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
-    .addTo(map.value);
+   // Attribution en bas
+   L.control.attribution({ position: 'bottomleft' })
+     .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>')
+     .addTo(map.value);
 
-  // Gérer les clics sur la carte
-  map.value.on('click', handleMapClick);
+   // Gérer les clics sur la carte
+   map.value.on('click', handleMapClick);
+
+   await nextTick();
+   refreshMapSize();
+   setTimeout(refreshMapSize, 250);
 }
 
 /**
@@ -334,15 +361,103 @@ async function getUserLocation() {
 }
 
 /**
- * Centre la carte sur la position de l'utilisateur
+ * Centre la carte sur la position de l'utilisateur avec animation
  */
-async function centerOnUser() {
-  if (userPosition.value) {
-    map.value.setView([userPosition.value.latitude, userPosition.value.longitude], 16, {
-      animate: true,
+async function centerOnUserWithAnimation() {
+  locatingUser.value = true;
+
+  try {
+    // Si on a déjà la position, juste centrer
+    if (userPosition.value && map.value) {
+      map.value.flyTo(
+        [userPosition.value.latitude, userPosition.value.longitude],
+        17,
+        {
+          animate: true,
+          duration: 1.5,
+        }
+      );
+
+      // Pulse animation sur le marqueur utilisateur
+      if (userMarker.value) {
+        const markerElement = userMarker.value.getElement();
+        if (markerElement) {
+          markerElement.classList.add('pulse');
+          setTimeout(() => {
+            markerElement.classList.remove('pulse');
+          }, 1500);
+        }
+      }
+    } else {
+      // Récupérer la position puis centrer
+      const hasPermission = await locationService.checkPermissions();
+
+      if (!hasPermission) {
+        const toast = await toastController.create({
+          message: 'Permission de localisation refusée',
+          duration: 3000,
+          color: 'warning',
+          position: 'top',
+        });
+        await toast.present();
+        return;
+      }
+
+      const position = await locationService.getCurrentPosition();
+      userPosition.value = position;
+
+      // Ajouter/mettre à jour le marqueur utilisateur
+      if (userMarker.value) {
+        userMarker.value.setLatLng([position.latitude, position.longitude]);
+      } else {
+        const userIcon = L.divIcon({
+          className: 'user-location-icon',
+          html: `
+            <div class="user-marker">
+              <div class="user-marker-pulse"></div>
+              <div class="user-marker-dot"></div>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        userMarker.value = L.marker([position.latitude, position.longitude], { icon: userIcon })
+          .addTo(map.value)
+          .bindPopup('Vous êtes ici');
+      }
+
+      // Animer vers la position
+      if (map.value) {
+        map.value.flyTo(
+          [position.latitude, position.longitude],
+          17,
+          {
+            animate: true,
+            duration: 1.5,
+          }
+        );
+      }
+
+      const toast = await toastController.create({
+        message: 'Position trouvée',
+        duration: 2000,
+        color: 'success',
+        position: 'top',
+      });
+      await toast.present();
+    }
+  } catch (error) {
+    console.error('Erreur de localisation:', error);
+    const toast = await toastController.create({
+      message: error.message || 'Impossible de récupérer votre position',
+      duration: 3000,
+      color: 'danger',
+      position: 'top',
     });
-  } else {
-    await getUserLocation();
+    await toast.present();
+  } finally {
+    locatingUser.value = false;
   }
 }
 
@@ -406,11 +521,14 @@ function applyFilters(filters) {
 <style scoped>
 .map-content {
   position: relative;
+  --overflow: hidden;
 }
 
 #map {
   width: 100%;
   height: 100%;
+  position: absolute;
+  inset: 0;
   z-index: 1;
 }
 
@@ -463,6 +581,33 @@ function applyFilters(filters) {
   --border-radius: 50%;
   width: 40px;
   height: 40px;
+}
+
+/* Bouton de localisation style Google Maps */
+.locate-button {
+  position: absolute;
+  bottom: 180px;
+  right: 16px;
+  z-index: 1000;
+  --border-radius: 50%;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  width: 44px;
+  height: 44px;
+  --background: white;
+  --color: #333;
+}
+
+.locate-button:hover {
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.locate-button ion-icon {
+  font-size: 24px;
+  color: var(--ion-color-primary);
+}
+
+.locate-button ion-spinner {
+  --color: var(--ion-color-primary);
 }
 
 /* Chargement */
