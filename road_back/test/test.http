@@ -62,6 +62,8 @@ Content-Type: application/json
 
 ###
 
+@token=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJub3V2ZWF1LW1hbmFAdGVzdC5jb20iLCJpYXQiOjE3NzA3MTg5MTgsImV4cCI6MTc3MDgwNTMxOH0.rfGyDxgto1m75BrtNd80b7fP7dx-aas8SwcnCD3ictZMtA-p3eutMSj5yfHfZV99GKIyGXLzgb5llWL13DoyRw
+
 ### 4. Connexion avec utilisateur Firebase existant (test@test.com)
 ### Note: Cet utilisateur doit exister dans Firebase Auth avec ce mot de passe
 POST http://localhost:8080/api/auth/login
@@ -125,7 +127,7 @@ Authorization: Bearer <TOKEN>
 ### 8. Modifier l'email (Firebase Auth + local)
 PUT http://localhost:8080/api/auth/profile
 Content-Type: application/json
-Authorization: Bearer <TOKEN>
+Authorization: Bearer {{token}}
 
 {
   "email": "nouveau.email@test.com"
@@ -140,7 +142,7 @@ Authorization: Bearer <TOKEN>
 ### 9. Déconnexion (met à jour isOnline dans Firestore)
 POST http://localhost:8080/api/auth/logout
 Content-Type: application/json
-Authorization: Bearer <TOKEN>
+Authorization: Bearer {{token}}
 
 ###
 

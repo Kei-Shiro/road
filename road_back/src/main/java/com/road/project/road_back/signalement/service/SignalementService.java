@@ -10,7 +10,9 @@ import com.road.project.road_back.signalement.repository.ConfigurationRepository
 import com.road.project.road_back.signalement.repository.SignalementRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,19 +24,49 @@ import java.util.stream.Collectors;
 
 /**
  * Service de gestion des signalements.
+ * Utilise Firebase Firestore si connexion disponible, sinon base locale.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SignalementService {
 
     private final SignalementRepository signalementRepository;
     private final UserRepository userRepository;
     private final ConfigurationRepository configurationRepository;
+    private final FirebaseSignalementService firebaseSignalementService;
+    private final FirebaseConfigurationService firebaseConfigurationService;
 
     /**
      * Récupère tous les signalements paginés.
+     * Priorité: Firebase si online, sinon local.
      */
     public Page<SignalementResponse> getAllSignalements(Pageable pageable) {
+        // Essayer Firebase d'abord
+        if (firebaseSignalementService.isOnline()) {
+            log.info("Récupération des signalements depuis Firebase");
+            List<FirebaseSignalementService.FirebaseSignalementData> firebaseData =
+                    firebaseSignalementService.getAllSignalements();
+
+            if (!firebaseData.isEmpty()) {
+                List<SignalementResponse> responses = firebaseData.stream()
+                        .map(this::mapFirebaseToResponse)
+                        .collect(Collectors.toList());
+
+                // Pagination manuelle
+                int start = (int) pageable.getOffset();
+                int end = Math.min(start + pageable.getPageSize(), responses.size());
+
+                if (start > responses.size()) {
+                    return new PageImpl<>(Collections.emptyList(), pageable, responses.size());
+                }
+
+                return new PageImpl<>(responses.subList(start, end), pageable, responses.size());
+            }
+        }
+
+        // Fallback local
+        log.info("Récupération des signalements depuis la base locale");
         return signalementRepository.findByIsActiveTrue(pageable)
                 .map(this::mapToResponse);
     }
@@ -43,17 +75,53 @@ public class SignalementService {
      * Récupère les signalements par statut.
      */
     public Page<SignalementResponse> getSignalementsByStatut(StatutSignalement statut, Pageable pageable) {
+        // Essayer Firebase d'abord
+        if (firebaseSignalementService.isOnline()) {
+            List<FirebaseSignalementService.FirebaseSignalementData> firebaseData =
+                    firebaseSignalementService.getSignalementsByStatut(statut);
+
+            if (!firebaseData.isEmpty()) {
+                List<SignalementResponse> responses = firebaseData.stream()
+                        .map(this::mapFirebaseToResponse)
+                        .collect(Collectors.toList());
+
+                int start = (int) pageable.getOffset();
+                int end = Math.min(start + pageable.getPageSize(), responses.size());
+
+                if (start > responses.size()) {
+                    return new PageImpl<>(Collections.emptyList(), pageable, responses.size());
+                }
+
+                return new PageImpl<>(responses.subList(start, end), pageable, responses.size());
+            }
+        }
+
+        // Fallback local
         return signalementRepository.findByStatutAndIsActiveTrue(statut, pageable)
                 .map(this::mapToResponse);
     }
 
     /**
      * Récupère un signalement par ID.
+     * Cherche d'abord localement, puis vérifie dans Firebase si nécessaire.
      */
     public SignalementResponse getSignalementById(Long id) {
         Signalement signalement = signalementRepository.findById(id)
                 .filter(Signalement::getIsActive)
                 .orElseThrow(() -> new RuntimeException("Signalement non trouvé"));
+
+        // Si online et syncId existe, récupérer les données à jour depuis Firebase
+        if (firebaseSignalementService.isOnline() && signalement.getSyncId() != null) {
+            Optional<FirebaseSignalementService.FirebaseSignalementData> firebaseData =
+                    firebaseSignalementService.getSignalementBySyncId(signalement.getSyncId());
+
+            if (firebaseData.isPresent()) {
+                // Synchroniser les données Firebase vers local
+                syncFirebaseToLocal(signalement, firebaseData.get());
+                signalementRepository.save(signalement);
+            }
+        }
+
         return mapToResponse(signalement);
     }
 
@@ -62,6 +130,20 @@ public class SignalementService {
      */
     public List<SignalementResponse> getSignalementsByBounds(
             Double minLat, Double maxLat, Double minLng, Double maxLng) {
+
+        // Essayer Firebase d'abord
+        if (firebaseSignalementService.isOnline()) {
+            List<FirebaseSignalementService.FirebaseSignalementData> firebaseData =
+                    firebaseSignalementService.getSignalementsByBounds(minLat, maxLat, minLng, maxLng);
+
+            if (!firebaseData.isEmpty()) {
+                return firebaseData.stream()
+                        .map(this::mapFirebaseToResponse)
+                        .collect(Collectors.toList());
+            }
+        }
+
+        // Fallback local
         return signalementRepository.findByBounds(minLat, maxLat, minLng, maxLng)
                 .stream()
                 .map(this::mapToResponse)
@@ -70,6 +152,7 @@ public class SignalementService {
 
     /**
      * Crée un nouveau signalement.
+     * Crée dans Firebase si online, puis localement.
      */
     @Transactional
     public SignalementResponse createSignalement(SignalementRequest request) {
@@ -86,6 +169,9 @@ public class SignalementService {
 
         // Calcul automatique du budget: prix_par_m2 * niveau * surface_m2
         BigDecimal budget = calculerBudget(request.getSurfaceImpactee(), niveau);
+
+        // Générer syncId si non fourni
+        String syncId = request.getSyncId() != null ? request.getSyncId() : UUID.randomUUID().toString();
 
         Signalement signalement = Signalement.builder()
                 .titre(request.getTitre())
@@ -108,17 +194,31 @@ public class SignalementService {
                 .priorite(request.getPriorite())
                 .type(request.getType())
                 .photoUrl(request.getPhotoUrl())
-                .syncId(request.getSyncId() != null ? request.getSyncId() : UUID.randomUUID().toString())
+                .syncId(syncId)
                 .localUpdatedAt(request.getLocalUpdatedAt())
                 .createdBy(currentUser)
                 .build();
 
+        // Sauvegarder localement
         signalement = signalementRepository.save(signalement);
+
+        // Créer dans Firebase si online
+        if (firebaseSignalementService.isOnline()) {
+            log.info("Création du signalement dans Firebase: {}", syncId);
+            firebaseSignalementService.createSignalement(signalement);
+            signalement.setIsSynced(true);
+            signalementRepository.save(signalement);
+        } else {
+            signalement.setIsSynced(false);
+            signalementRepository.save(signalement);
+        }
+
         return mapToResponse(signalement);
     }
 
     /**
      * Met à jour un signalement.
+     * Met à jour dans Firebase si online, puis localement.
      */
     @Transactional
     public SignalementResponse updateSignalement(Long id, SignalementRequest request) {
@@ -169,6 +269,18 @@ public class SignalementService {
 
         signalement.setUpdatedBy(currentUser);
         signalement = signalementRepository.save(signalement);
+
+        // Mettre à jour dans Firebase si online
+        if (firebaseSignalementService.isOnline() && signalement.getSyncId() != null) {
+            log.info("Mise à jour du signalement dans Firebase: {}", signalement.getSyncId());
+            boolean updated = firebaseSignalementService.updateSignalement(signalement.getSyncId(), signalement);
+            signalement.setIsSynced(updated);
+            signalementRepository.save(signalement);
+        } else {
+            signalement.setIsSynced(false);
+            signalementRepository.save(signalement);
+        }
+
         return mapToResponse(signalement);
     }
 
@@ -228,6 +340,7 @@ public class SignalementService {
 
     /**
      * Supprime un signalement (soft delete).
+     * Supprime dans Firebase si online, puis localement.
      */
     @Transactional
     public void deleteSignalement(Long id) {
@@ -236,6 +349,12 @@ public class SignalementService {
 
         signalement.setIsActive(false);
         signalementRepository.save(signalement);
+
+        // Supprimer dans Firebase si online
+        if (firebaseSignalementService.isOnline() && signalement.getSyncId() != null) {
+            log.info("Suppression du signalement dans Firebase: {}", signalement.getSyncId());
+            firebaseSignalementService.deleteSignalement(signalement.getSyncId());
+        }
     }
 
     /**
@@ -582,6 +701,19 @@ public class SignalementService {
      * Récupère toutes les configurations.
      */
     public List<ConfigurationResponse> getAllConfigurations() {
+        // Essayer Firebase d'abord
+        if (firebaseConfigurationService.isOnline()) {
+            List<FirebaseConfigurationService.FirebaseConfigurationData> firebaseData =
+                    firebaseConfigurationService.getAllConfigurations();
+
+            if (!firebaseData.isEmpty()) {
+                return firebaseData.stream()
+                        .map(this::mapFirebaseConfigToResponse)
+                        .collect(Collectors.toList());
+            }
+        }
+
+        // Fallback local
         return configurationRepository.findAll().stream()
                 .map(this::mapConfigToResponse)
                 .collect(Collectors.toList());
@@ -591,6 +723,17 @@ public class SignalementService {
      * Récupère une configuration par sa clé.
      */
     public ConfigurationResponse getConfiguration(String cle) {
+        // Essayer Firebase d'abord
+        if (firebaseConfigurationService.isOnline()) {
+            Optional<FirebaseConfigurationService.FirebaseConfigurationData> firebaseData =
+                    firebaseConfigurationService.getConfigurationByCle(cle);
+
+            if (firebaseData.isPresent()) {
+                return mapFirebaseConfigToResponse(firebaseData.get());
+            }
+        }
+
+        // Fallback local
         return configurationRepository.findByCle(cle)
                 .map(this::mapConfigToResponse)
                 .orElse(null);
@@ -598,6 +741,7 @@ public class SignalementService {
 
     /**
      * Met à jour une configuration.
+     * Met à jour dans Firebase si online, puis localement.
      */
     @Transactional
     public ConfigurationResponse updateConfiguration(ConfigurationRequest request) {
@@ -612,6 +756,12 @@ public class SignalementService {
         }
         config = configurationRepository.save(config);
 
+        // Sauvegarder dans Firebase si online
+        if (firebaseConfigurationService.isOnline()) {
+            log.info("Sauvegarde de la configuration dans Firebase: {}", config.getCle());
+            firebaseConfigurationService.saveConfiguration(config);
+        }
+
         return mapConfigToResponse(config);
     }
 
@@ -623,6 +773,87 @@ public class SignalementService {
                 .description(config.getDescription())
                 .updatedAt(config.getUpdatedAt())
                 .build();
+    }
+
+    // ==================== MAPPING FIREBASE ====================
+
+    /**
+     * Mappe les données Firebase vers SignalementResponse.
+     */
+    private SignalementResponse mapFirebaseToResponse(FirebaseSignalementService.FirebaseSignalementData fb) {
+        SignalementResponse.UserSummary createdBy = null;
+        if (fb.getCreatedByEmail() != null) {
+            createdBy = SignalementResponse.UserSummary.builder()
+                    .email(fb.getCreatedByEmail())
+                    .build();
+        }
+
+        return SignalementResponse.builder()
+                .id(null) // ID local non disponible depuis Firebase
+                .titre(fb.getTitre())
+                .description(fb.getDescription())
+                .latitude(fb.getLatitude())
+                .longitude(fb.getLongitude())
+                .adresse(fb.getAdresse())
+                .statut(fb.getStatut())
+                .surfaceImpactee(fb.getSurfaceImpactee())
+                .niveau(fb.getNiveau())
+                .budget(fb.getBudget())
+                .entrepriseResponsable(fb.getEntrepriseResponsable())
+                .dateDebut(fb.getDateDebut())
+                .dateFinPrevue(fb.getDateFinPrevue())
+                .dateFinReelle(fb.getDateFinReelle())
+                .dateNouveau(fb.getDateNouveau())
+                .dateEnCours(fb.getDateEnCours())
+                .dateTermine(fb.getDateTermine())
+                .pourcentageAvancement(fb.getPourcentageAvancement())
+                .priorite(fb.getPriorite())
+                .type(fb.getType())
+                .photoUrl(fb.getPhotoUrl())
+                .syncId(fb.getSyncId())
+                .isSynced(fb.getIsSynced())
+                .createdAt(fb.getCreatedAt())
+                .updatedAt(fb.getUpdatedAt())
+                .createdBy(createdBy)
+                .build();
+    }
+
+    /**
+     * Mappe les données Firebase Configuration vers ConfigurationResponse.
+     */
+    private ConfigurationResponse mapFirebaseConfigToResponse(FirebaseConfigurationService.FirebaseConfigurationData fb) {
+        return ConfigurationResponse.builder()
+                .id(null)
+                .cle(fb.getCle())
+                .valeur(fb.getValeur())
+                .description(fb.getDescription())
+                .updatedAt(fb.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Synchronise les données Firebase vers un signalement local.
+     */
+    private void syncFirebaseToLocal(Signalement local, FirebaseSignalementService.FirebaseSignalementData fb) {
+        if (fb.getTitre() != null) local.setTitre(fb.getTitre());
+        if (fb.getDescription() != null) local.setDescription(fb.getDescription());
+        if (fb.getLatitude() != null) local.setLatitude(fb.getLatitude());
+        if (fb.getLongitude() != null) local.setLongitude(fb.getLongitude());
+        if (fb.getAdresse() != null) local.setAdresse(fb.getAdresse());
+        if (fb.getStatut() != null) local.setStatut(fb.getStatut());
+        if (fb.getSurfaceImpactee() != null) local.setSurfaceImpactee(fb.getSurfaceImpactee());
+        if (fb.getNiveau() != null) local.setNiveau(fb.getNiveau());
+        if (fb.getBudget() != null) local.setBudget(fb.getBudget());
+        if (fb.getEntrepriseResponsable() != null) local.setEntrepriseResponsable(fb.getEntrepriseResponsable());
+        if (fb.getDateDebut() != null) local.setDateDebut(fb.getDateDebut());
+        if (fb.getDateFinPrevue() != null) local.setDateFinPrevue(fb.getDateFinPrevue());
+        if (fb.getDateFinReelle() != null) local.setDateFinReelle(fb.getDateFinReelle());
+        if (fb.getPourcentageAvancement() != null) local.setPourcentageAvancement(fb.getPourcentageAvancement());
+        if (fb.getPriorite() != null) local.setPriorite(fb.getPriorite());
+        if (fb.getType() != null) local.setType(fb.getType());
+        if (fb.getPhotoUrl() != null) local.setPhotoUrl(fb.getPhotoUrl());
+        if (fb.getIsActive() != null) local.setIsActive(fb.getIsActive());
+        local.setIsSynced(true);
     }
 }
 
